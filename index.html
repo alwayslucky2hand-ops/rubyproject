@@ -763,13 +763,15 @@
         return;
       }
       dataToRender.forEach(function(r) { 
-        // 💡 【核心優化】：嘗試解析 JSON 陣列來顯示摘要，若失敗則退回純文字解析 (向下相容舊資料)
-        var summaryNames = "";
-        try {
-            var matrix = JSON.parse(r.services);
-            summaryNames = matrix.map(function(m){ return m.name; }).join(', ');
-        } catch(e) {
-            summaryNames = String(r.services).replace(/\n/g, ' '); 
+        // 💡 優先讀取 K 欄的主項目名稱，若舊資料則 fallback 解析 L 欄
+        var summaryNames = r.mainServices || "";
+        if (!summaryNames) {
+            try {
+                var matrix = JSON.parse(r.services);
+                summaryNames = matrix.map(function(m){ return m.name; }).join(', ');
+            } catch(e) {
+                summaryNames = String(r.services).replace(/\n/g, ' '); 
+            }
         }
         var safeService = summaryNames.substring(0, 15) + (summaryNames.length > 15 ? "..." : "");
         
@@ -894,8 +896,14 @@
       
       cancelEditCanvas();
       
-      // ✅ 載入模組：傳入 JSON 字串進行精確還原
+      // 💡 載入模組：傳入 JSON 矩陣字串進行精確選項還原
       renderEditQuoteList(globalContractData, record.services || "");
+      
+      // 💡 強制還原 M 欄的約定條款，確保當初手動修改的文字不被 calcEditTotal() 蓋掉
+      if (record.terms) {
+          document.getElementById('edit-history-terms').value = record.terms;
+      }
+
       document.getElementById('edit-history-modal').classList.add('show');
       
       autoLoadEditDraftIfExist(record.projectId);
@@ -1406,6 +1414,8 @@
       if (!newCompany) return showToast("請確認公司名稱。");
       
       var servicesMatrix = [];
+      var selNames = []; // 💡 用來收集準備寫入 K 欄的主項目
+      
       document.querySelectorAll('#edit-service-list details.accordion-group .summary-left input:checked').forEach(function(box) { 
         var group = box.closest('details.accordion-group');
         var priceInput = group.querySelector('.edit-service-price-input');
@@ -1417,6 +1427,8 @@
         var serviceName = box.value;
         var type = box.getAttribute('data-type');
         var isSub = (type === '訂閱服務') || box.getAttribute('data-issub') === 'true';
+
+        selNames.push(serviceName); // 收集主項目名稱
 
         var detailsArr = [];
         group.querySelectorAll('.edit-child-box:checked').forEach(function(c){ 
@@ -1450,8 +1462,9 @@
         tax: editCurrentTax, 
         total: editCurrentOriginalTotal, 
         customPrice: discountVal ? editCurrentTotal : "", 
-        selectedServices: JSON.stringify(servicesMatrix), // 💡 寫入 JSON 矩陣
-        terms: document.getElementById('edit-history-terms').value,
+        selectedMainNames: selNames.join(', '), // 💡 Col K: 主項目內容
+        selectedServices: JSON.stringify(servicesMatrix), // 💡 Col L: JSON 矩陣
+        terms: document.getElementById('edit-history-terms').value, // 💡 Col M: 約定條款
         signature: editSignatureDataUrl || null
       };
 
@@ -1460,7 +1473,10 @@
       var record = globalHistoryData.find(function(r){ return r.projectId === pid; });
       if (record) {
          record.company = updateData.company; record.taxId = updateData.taxId;
-         record.services = updateData.selectedServices; record.subtotal = updateData.subtotal;
+         record.mainServices = updateData.selectedMainNames; // 更新前端暫存狀態
+         record.services = updateData.selectedServices; 
+         record.terms = updateData.terms; 
+         record.subtotal = updateData.subtotal;
          record.tax = updateData.tax; record.total = updateData.total; record.customPrice = updateData.customPrice;
       }
       renderHistoryTable(globalHistoryData);
@@ -1495,7 +1511,7 @@
         var type = box.getAttribute('data-type');
         var isSub = (type === '訂閱服務');
 
-        selNames.push(serviceName);
+        selNames.push(serviceName); // 收集主項目名稱
         
         var detailsArr = [];
         group.querySelectorAll('.child-box:checked').forEach(function(c){ 
@@ -1525,12 +1541,12 @@
         company: document.getElementById('client-company').value, taxId: document.getElementById('client-taxId').value, 
         rep: document.getElementById('client-rep').value, contact: document.getElementById('client-contact').value, 
         phone: document.getElementById('client-phone').value, address: document.getElementById('client-address').value, 
-        selectedServices: JSON.stringify(servicesMatrix), // 💡 寫入 JSON 矩陣
+        selectedServiceNames: selNames, // 💡 給後端建置 K 欄與分發專案使用
+        selectedServices: JSON.stringify(servicesMatrix), // 💡 寫入 JSON 矩陣 L 欄
         subtotal: currentSubtotal, tax: currentTax, 
         total: currentOriginalTotal, 
         customPrice: discountVal ? currentTotal : "", 
-        terms: document.getElementById('client-terms').value, signature: newSignatureDataUrl,
-        selectedServiceNames: selNames
+        terms: document.getElementById('client-terms').value, signature: newSignatureDataUrl
       };
 
       document.getElementById('preview-body').innerHTML = '<div style="text-align:center; padding: 40px; color: #86868b;">連線取得即時單號與排版中，請稍候...</div>';
