@@ -73,7 +73,7 @@
     .card-title { font-size: 18px; font-weight: 600; margin-bottom: 24px; margin-top: 0; padding-bottom: 12px; letter-spacing: -0.3px;}
 
     label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; margin-top: 20px; font-weight: 500;}
-    input[type="text"], input[type="number"], input[type="tel"], input[type="email"], select, textarea { width: 100%; padding: 14px 16px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 10px; background-color: var(--input-bg); color: var(--text-main); box-sizing: border-box; transition: all 0.2s ease; outline: none; font-family: inherit; }
+    input[type="text"], input[type="number"], input[type="tel"], input[type="email"], input[type="date"], select, textarea { width: 100%; padding: 14px 16px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 10px; background-color: var(--input-bg); color: var(--text-main); box-sizing: border-box; transition: all 0.2s ease; outline: none; font-family: inherit; }
     input:focus, select:focus, textarea:focus { border-color: var(--text-main); box-shadow: 0 0 0 4px rgba(29, 29, 31, 0.05); }
     
     button.primary { background-color: var(--text-main); color: #ffffff; border: none; border-radius: 10px; padding: 16px 24px; font-size: 15px; font-weight: 500; cursor: pointer; transition: 0.2s; width: 100%; margin-top: 24px; }
@@ -119,7 +119,7 @@
 
     /* ====== 專案篩選與標籤設計 ====== */
     .search-filter-container { margin-bottom: 24px; }
-    .search-bar { width: 100%; padding: 14px 20px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--hover-bg); transition: 0.2s; outline: none;}
+    .search-bar { width: 100%; padding: 14px 20px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--hover-bg); transition: 0.2s; outline: none; box-sizing: border-box;}
     .search-bar:focus { background: var(--bg-color); border-color: var(--text-main); box-shadow: 0 0 0 4px rgba(29, 29, 31, 0.05);}
     .filter-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
     .filter-chip { display: inline-flex; align-items: center; cursor: pointer; }
@@ -185,7 +185,6 @@
       .segment-btn { flex: 1; text-align: center; padding: 12px 8px; }
       .search-filter-container { display: flex !important; flex-direction: column; gap: 12px !important; align-items: stretch !important; margin-bottom: 24px !important; }
       .search-filter-container .search-bar, .search-filter-container select, .search-filter-container button { width: 100% !important; margin: 0 !important; max-width: none !important;}
-      .search-filter-container span { display: none; } 
       .card { padding: 20px; border-radius: 12px; }
       .task-container { flex-direction: column; gap: 20px;}
       .bar-header { flex-direction: column; align-items: flex-start; gap: 12px; }
@@ -310,9 +309,12 @@
           
           <div class="search-filter-container" style="display:flex; gap:12px; margin-bottom:24px; align-items:center; flex-wrap:wrap;">
             <input type="text" id="history-search" class="search-bar" placeholder="模糊搜尋公司、專案ID或服務..." oninput="filterHistory()" style="flex:1; min-width:200px; margin-bottom:0;">
-            <input type="date" id="history-date-start" class="search-bar" onchange="filterHistory()" style="width:auto; margin-bottom:0; color:var(--text-muted);">
-            <span style="color:var(--text-muted); font-size:14px; font-weight:500;">至</span>
-            <input type="date" id="history-date-end" class="search-bar" onchange="filterHistory()" style="width:auto; margin-bottom:0; color:var(--text-muted);">
+            
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0;">
+              <input type="date" id="history-date-start" class="search-bar" onchange="filterHistory()" style="width: auto; margin: 0; color:var(--text-muted);">
+              <span style="color:var(--text-muted); font-size:14px; font-weight:500; white-space: nowrap;">至</span>
+              <input type="date" id="history-date-end" class="search-bar" onchange="filterHistory()" style="width: auto; margin: 0; color:var(--text-muted);">
+            </div>
             
             <select id="history-schedule-filter" class="search-bar" onchange="filterHistory()" style="width:auto; margin-bottom:0; color:var(--text-muted);">
                 <option value="all">排程狀態 (全部)</option>
