@@ -255,6 +255,8 @@
             <span class="draft-status" id="client-draft-status">已自動儲存</span>
             <select class="draft-select" id="client-draft-select" onchange="loadClientDraftFromLib()"><option value="">載入草稿...</option></select>
             <button class="draft-btn" onclick="saveClientDraftToLib()">儲存進度</button>
+            <!-- 這裡是新增的清空欄位按鈕 -->
+            <button class="secondary-sm" onclick="clearNewClientForm()">清空欄位</button>
           </div>
         </div>
         <div class="card" id="client-form-area">
@@ -670,6 +672,44 @@
       document.getElementById('client-terms').value = combinedTerms.trim(); 
     }
 
+    // ====== 新增的「清空欄位」功能 ======
+    function clearNewClientForm() {
+      if(!confirm('確定要清空所有欄位與目前的自動儲存草稿嗎？此動作無法復原。')) return;
+      
+      // 清空文字欄位
+      document.getElementById('client-taxId').value = '';
+      document.getElementById('client-company').value = '';
+      document.getElementById('client-rep').value = '';
+      document.getElementById('client-contact').value = '';
+      document.getElementById('client-phone').value = '';
+      document.getElementById('client-email').value = '';
+      document.getElementById('client-address').value = '';
+      document.getElementById('client-custom-price').value = '';
+      document.getElementById('client-terms').value = '';
+
+      // 服務勾選重置
+      document.querySelectorAll('#service-list input[type="checkbox"]').forEach(function(box){ 
+        box.checked = false; 
+      });
+      // 價格輸入框還原為預設值
+      document.querySelectorAll('#service-list .service-price-input').forEach(function(input){
+        input.value = input.getAttribute('data-price');
+      });
+
+      // 簽名重置
+      newSignatureDataUrl = '';
+      document.getElementById('sig-preview-img').src = '';
+      document.getElementById('sig-preview-container').style.display = 'none';
+
+      // 重新計算總計 (歸零)
+      calcTotal();
+
+      // 徹底清除 localStorage 自動儲存紀錄
+      localStorage.removeItem('ruby_client_autosave');
+      
+      showToast('表單與暫存草稿已完全清空！');
+    }
+
     function switchClientTab(mode) { document.getElementById('btn-tab-new').classList.remove('active'); document.getElementById('btn-tab-history').classList.remove('active'); document.getElementById('client-tab-new').style.display = 'none'; document.getElementById('client-tab-history').style.display = 'none'; document.getElementById('btn-tab-'+mode).classList.add('active'); document.getElementById('client-tab-'+mode).style.display = 'block'; if(mode==='history') loadHistoryData(); }
     
     function loadHistoryData() { 
@@ -803,7 +843,9 @@
       
       document.getElementById('edit-modal-title-info').innerText = '- ' + record.company + ' (' + record.projectId + ')';
       document.getElementById('edit-history-pid').value = record.projectId;
+      // 這裡將試算表的實際 rowId 設定為隱藏值
       document.getElementById('edit-history-rowId').value = record._rowId; 
+      
       document.getElementById('edit-history-taxId').value = record.taxId || "";
       document.getElementById('edit-history-company').value = record.company || "";
       document.getElementById('edit-history-rep').value = record.rep || "";
@@ -1298,6 +1340,7 @@
       closeEditHistoryModal();
       showToast("進度已於畫面更新，系統正默默產生新的 PDF 檔案...");
       
+      // 💡 這裡將你隱藏紀錄的 rowId 傳遞給後端，後端即可做到「不搜尋，直接指定該列改寫」的精準操作！
       apiCall('updateClientQuoteData', [rowId, pid, updateData], function(newPdfUrl){
         if(record && newPdfUrl) record.pdfUrl = newPdfUrl;
         renderHistoryTable(globalHistoryData);
