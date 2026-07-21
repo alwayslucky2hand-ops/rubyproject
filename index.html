@@ -763,7 +763,16 @@
         return;
       }
       dataToRender.forEach(function(r) { 
-        var safeService = String(r.services).substring(0, 15) + (String(r.services).length > 15 ? "..." : "");
+        // 💡 【核心優化】：嘗試解析 JSON 陣列來顯示摘要，若失敗則退回純文字解析 (向下相容舊資料)
+        var summaryNames = "";
+        try {
+            var matrix = JSON.parse(r.services);
+            summaryNames = matrix.map(function(m){ return m.name; }).join(', ');
+        } catch(e) {
+            summaryNames = String(r.services).replace(/\n/g, ' '); 
+        }
+        var safeService = summaryNames.substring(0, 15) + (summaryNames.length > 15 ? "..." : "");
+        
         var scheduleStatus = "";
         if (r.isScheduled === '是') scheduleStatus = '<span style="color:var(--text-main); font-weight:600;">已排入</span>';
         else if (r.isScheduled === '失敗') scheduleStatus = '<span style="color:#ff3b30; font-weight:600;">寫入失敗</span>';
@@ -885,7 +894,7 @@
       
       cancelEditCanvas();
       
-      // ✅ 將歷史紀錄精確傳入進行 UI 還原
+      // ✅ 載入模組：傳入 JSON 字串進行精確還原
       renderEditQuoteList(globalContractData, record.services || "");
       document.getElementById('edit-history-modal').classList.add('show');
       
@@ -895,70 +904,58 @@
     function closeEditHistoryModal() { document.getElementById('edit-history-modal').classList.remove('show'); }
 
     // ==========================================
-    // 💡 核心優化：完全還原「客戶建檔報價」的歷史狀態，並容許追加新項目
+    // 💡 核心優化：以 JSON 矩陣方式精確還原歷史報價，同時保留向下相容與新項目追加能力
     // ==========================================
     function renderEditQuoteList(items, selectedServicesStr) { 
       var listDiv = document.getElementById('edit-service-list'); 
       listDiv.innerHTML = ""; 
-      var validStr = selectedServicesStr || ""; 
-
-      // 1. 深度解析歷史紀錄字串 (還原所有自訂金額、自訂月份、客製化勾選項)
+      
       var historyParsed = [];
-      var currentObj = null;
-      var lines = validStr.split('\n');
-
-      lines.forEach(function(line) {
-        var trimmedLine = line.trim();
-        if (trimmedLine.startsWith('- ')) {
+      
+      // 1. 嘗試以 JSON 解析 (新版矩陣架構)；若失敗則走舊版純文字擷取 (向下相容)
+      try {
+          historyParsed = JSON.parse(selectedServicesStr);
+      } catch(e) {
+          var currentObj = null;
+          selectedServicesStr.split('\n').forEach(function(line) {
+              var trimmedLine = line.trim();
+              if (trimmedLine.startsWith('- ')) {
+                  if (currentObj) historyParsed.push(currentObj);
+                  var parts = trimmedLine.substring(2).split(' | $');
+                  var rawName = parts[0].trim();
+                  var totalPriceStr = parts[1] ? parts[1].replace(/[^0-9.-]/g, '') : "0";
+                  var totalPrice = parseInt(totalPriceStr, 10) || 0;
+                  var sName = rawName;
+                  var months = 1;
+                  var monthMatch = rawName.match(/(.+?)\s*\(x(\d+)個月\)$/);
+                  if (monthMatch) {
+                      sName = monthMatch[1].trim();
+                      months = parseInt(monthMatch[2], 10);
+                  }
+                  var basePrice = months > 1 ? Math.round(totalPrice / months) : totalPrice;
+                  currentObj = {
+                      name: sName, type: "歷史紀錄", isSub: rawName.includes('/月') || months > 1,
+                      basePrice: basePrice, months: months, totalPrice: totalPrice, details: []
+                  };
+              } else if (trimmedLine !== '' && currentObj) {
+                  var childText = trimmedLine;
+                  if (childText.startsWith('[')) {
+                      var cParts = childText.split('] ');
+                      if (cParts.length > 1) childText = cParts.slice(1).join('] ');
+                  }
+                  currentObj.details.push(childText);
+              }
+          });
           if (currentObj) historyParsed.push(currentObj);
+      }
 
-          var parts = trimmedLine.substring(2).split(' | $');
-          var rawName = parts[0].trim();
-          var totalPriceStr = parts[1] ? parts[1].replace(/[^0-9.-]/g, '') : "0";
-          var totalPrice = parseInt(totalPriceStr, 10) || 0;
+      var renderedServices = []; 
 
-          var sName = rawName;
-          var months = 1;
-          var isSub = false;
-
-          // 偵測是否為訂閱制或多月度設定
-          var monthMatch = rawName.match(/(.+?)\s*\(x(\d+)個月\)$/);
-          if (monthMatch) {
-            sName = monthMatch[1].trim();
-            months = parseInt(monthMatch[2], 10);
-            isSub = true;
-          } else if (rawName.includes('/月')) {
-            isSub = true; // 從名稱推斷為月費訂閱制
-          }
-
-          var basePrice = months > 1 ? Math.round(totalPrice / months) : totalPrice;
-
-          currentObj = {
-            originalName: sName,
-            price: basePrice,
-            months: months,
-            isSub: isSub,
-            children: []
-          };
-        } else if (trimmedLine !== '' && currentObj) {
-          var childText = trimmedLine;
-          // 去除前綴標籤如 [服務名稱]
-          if (childText.startsWith('[')) {
-            var cParts = childText.split('] ');
-            if (cParts.length > 1) childText = cParts.slice(1).join('] ');
-          }
-          currentObj.children.push(childText);
-        }
-      });
-      if (currentObj) historyParsed.push(currentObj);
-
-      var renderedServices = []; // 用來避免上下重複渲染
-
-      // 2. 優先產生「歷史報價還原」區塊 (百分百重現上次報價儲存時的樣貌)
+      // 2. 優先產生「歷史報價還原」區塊 (百分百精準重現上次報價儲存時的樣貌)
       if (historyParsed.length > 0) {
         listDiv.insertAdjacentHTML('beforeend', '<div class="category-title">前次建檔內容 (還原歷史紀錄)</div>');
         historyParsed.forEach(function(histItem) {
-          renderedServices.push(histItem.originalName);
+          renderedServices.push(histItem.name);
 
           var group = document.createElement('details');
           group.className = "accordion-group";
@@ -966,15 +963,15 @@
 
           var htmlParts = [];
           htmlParts.push('<summary class="accordion-header"><div class="summary-left">');
-          htmlParts.push('<input type="checkbox" class="edit-parent-box" onchange="toggleEditQuoteChildren(this)" onclick="event.stopPropagation()" data-type="歷史紀錄" data-issub="' + histItem.isSub + '" data-service="' + histItem.originalName + '" data-price="' + histItem.price + '" value="' + histItem.originalName + '" checked>');
-          htmlParts.push('<span>' + histItem.originalName + '</span></div><div class="summary-right"></div></summary>');
+          htmlParts.push('<input type="checkbox" class="edit-parent-box" onchange="toggleEditQuoteChildren(this)" onclick="event.stopPropagation()" data-type="歷史紀錄" data-issub="' + histItem.isSub + '" data-service="' + histItem.name + '" data-price="' + histItem.basePrice + '" value="' + histItem.name + '" checked>');
+          htmlParts.push('<span>' + histItem.name + '</span></div><div class="summary-right"></div></summary>');
           htmlParts.push('<div class="details-content">');
 
           htmlParts.push('<div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-color); display:flex; align-items:center; flex-wrap:wrap; gap:10px;">');
           htmlParts.push('<label style="margin:0; flex-shrink:0; font-weight:600; color:var(--text-main);">' + (histItem.isSub || histItem.months > 1 ? '每月報價：' : '項目報價：') + '</label>');
           htmlParts.push('<div style="position:relative; display:inline-block; max-width:150px;">');
           htmlParts.push('<span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:15px; font-weight:500;">$</span>');
-          htmlParts.push('<input type="number" class="edit-service-price-input" data-service="' + histItem.originalName + '" value="' + histItem.price + '" style="width:100%; padding-left:26px; margin:0; font-weight:600;" oninput="calcEditTotal(); autoSaveEdit();">');
+          htmlParts.push('<input type="number" class="edit-service-price-input" data-service="' + histItem.name + '" value="' + histItem.basePrice + '" style="width:100%; padding-left:26px; margin:0; font-weight:600;" oninput="calcEditTotal(); autoSaveEdit();">');
           htmlParts.push('</div>');
 
           if (histItem.isSub || histItem.months > 1) {
@@ -984,8 +981,8 @@
           }
           htmlParts.push('</div>');
 
-          histItem.children.forEach(function(childText) {
-            var childVal = '[' + histItem.originalName + '] ' + childText;
+          histItem.details.forEach(function(childText) {
+            var childVal = '[' + histItem.name + '] ' + childText;
             htmlParts.push('<label class="tree-child"><input type="checkbox" class="edit-child-box" onchange="calcEditTotal(); autoSaveEdit();" value="' + childVal + '" checked><span style="color:var(--text-main); font-weight:400;">' + childText + '</span></label>');
           });
 
@@ -1186,37 +1183,33 @@
     }
 
     // =====================================
-    // A4 排版引擎
+    // A4 排版引擎 (已適配 JSON 矩陣讀取)
     // =====================================
     function generateA4HTML(data, quoteId) {
       var now = new Date();
       var rocYear = now.getFullYear() - 1911;
       var rocDate = '中華民國 ' + rocYear + ' 年 ' + (now.getMonth() + 1) + ' 月 ' + now.getDate() + ' 日';
 
-      var servicesArr = data.selectedServices.split('\n').filter(function(s){ return s.trim() !== ''; });
-      var modulesHtmlParts = [];
-      var currentModule = '';
-      var currentModulePrice = '';
-      var currentDetails = [];
-      
-      servicesArr.forEach(function(line) {
-         if (line.startsWith('- ')) {
-             if (currentModule) {
-                 var priceHtml = currentModulePrice ? '<br><span style="color:#86868b; font-size:13px; font-weight:normal;">本項小計：' + currentModulePrice + '</span>' : '';
-                 modulesHtmlParts.push('<tr><td><b>' + currentModule + '</b>' + priceHtml + '</td><td>' + currentDetails.join('<br>') + '</td></tr>');
-             }
-             var parts = line.replace('- ', '').split(' | ');
-             currentModule = parts[0];
-             currentModulePrice = parts.length > 1 ? parts[1] : '';
-             currentDetails = [];
-         } else {
-             currentDetails.push("• " + line.trim());
-         }
-      });
-      if (currentModule) {
-          var priceHtml = currentModulePrice ? '<br><span style="color:#86868b; font-size:13px; font-weight:normal;">本項小計：' + currentModulePrice + '</span>' : '';
-          modulesHtmlParts.push('<tr><td><b>' + currentModule + '</b>' + priceHtml + '</td><td>' + currentDetails.join('<br>') + '</td></tr>');
+      var servicesMatrix = [];
+      try {
+          servicesMatrix = typeof data.selectedServices === 'string' ? JSON.parse(data.selectedServices) : data.selectedServices;
+      } catch(e) {
+          // 向下相容
       }
+
+      var modulesHtmlParts = [];
+      if (servicesMatrix && servicesMatrix.length > 0) {
+          servicesMatrix.forEach(function(item) {
+              var priceStr = item.totalPrice > 0 ? '<br><span style="color:#86868b; font-size:13px; font-weight:normal;">本項小計：$' + Number(item.totalPrice).toLocaleString() + '</span>' : '';
+              var detailsHtml = item.details.map(function(d){ return "• " + d; }).join('<br>');
+              
+              var displayName = item.name;
+              if (item.months > 1 || item.isSub) displayName += ' (x' + item.months + '個月)';
+
+              modulesHtmlParts.push('<tr><td><b>' + displayName + '</b>' + priceStr + '</td><td>' + detailsHtml + '</td></tr>');
+          });
+      }
+
       if (modulesHtmlParts.length === 0) modulesHtmlParts.push('<tr><td colspan="2" style="text-align:center; color:#86868b;">未選擇任何服務</td></tr>');
       var modulesHtml = modulesHtmlParts.join('');
 
@@ -1404,7 +1397,7 @@
     }
 
     // =====================================
-    // 提交與排版預覽
+    // 提交與排版預覽 (將資料打包成 JSON 矩陣送出)
     // =====================================
     function submitEditHistory() {
       var pid = document.getElementById('edit-history-pid').value;
@@ -1412,7 +1405,7 @@
       var newCompany = document.getElementById('edit-history-company').value;
       if (!newCompany) return showToast("請確認公司名稱。");
       
-      var selText = ""; 
+      var servicesMatrix = [];
       document.querySelectorAll('#edit-service-list details.accordion-group .summary-left input:checked').forEach(function(box) { 
         var group = box.closest('details.accordion-group');
         var priceInput = group.querySelector('.edit-service-price-input');
@@ -1420,16 +1413,31 @@
         
         var basePrice = priceInput ? parseInt(priceInput.value || 0) : parseInt(box.getAttribute('data-price') || 0);
         var months = monthsInput ? parseInt(monthsInput.value || 1) : 1;
-        var totalPrice = basePrice * months;
+        
+        var serviceName = box.value;
+        var type = box.getAttribute('data-type');
+        var isSub = (type === '訂閱服務') || box.getAttribute('data-issub') === 'true';
 
-        var titleStr = box.value;
-        // 如果是訂閱服務，或原本就是多月的歷史紀錄，就加上月份文字防跑版
-        if (months > 1 || box.getAttribute('data-type') === '訂閱服務' || box.getAttribute('data-issub') === 'true') {
-             titleStr += ' (x' + months + '個月)';
-        }
+        var detailsArr = [];
+        group.querySelectorAll('.edit-child-box:checked').forEach(function(c){ 
+           var rawChild = c.value;
+           // 將 [服務名稱] 這個視覺前綴拿掉，保持資料乾淨
+           if(rawChild.startsWith('[')) {
+              var parts = rawChild.split('] ');
+              if(parts.length > 1) rawChild = parts.slice(1).join('] ');
+           }
+           detailsArr.push(rawChild.trim());
+        }); 
 
-        selText += '- ' + titleStr + ' | $' + totalPrice.toLocaleString('en-US') + '\n'; 
-        box.closest('details').querySelectorAll('.edit-child-box:checked').forEach(function(c){ selText += '  ' + c.value.split('] ')[1] + '\n'; }); 
+        servicesMatrix.push({
+           name: serviceName,
+           type: type,
+           isSub: isSub,
+           basePrice: basePrice,
+           months: months,
+           totalPrice: basePrice * months,
+           details: detailsArr
+        });
       });
 
       var discountVal = document.getElementById('edit-custom-price').value;
@@ -1442,7 +1450,8 @@
         tax: editCurrentTax, 
         total: editCurrentOriginalTotal, 
         customPrice: discountVal ? editCurrentTotal : "", 
-        selectedServices: selText, terms: document.getElementById('edit-history-terms').value,
+        selectedServices: JSON.stringify(servicesMatrix), // 💡 寫入 JSON 矩陣
+        terms: document.getElementById('edit-history-terms').value,
         signature: editSignatureDataUrl || null
       };
 
@@ -1471,25 +1480,42 @@
     function openPreviewModal() {
       if(!document.getElementById('client-company').value) return showToast("請填寫公司名稱");
       
-      var selText = ""; var selNames = [];
+      var servicesMatrix = [];
+      var selNames = [];
+      
       document.querySelectorAll('#service-list details.accordion-group .summary-left input:checked').forEach(function(box){ 
-        selNames.push(box.value); 
-        
         var group = box.closest('details.accordion-group');
         var priceInput = group.querySelector('.service-price-input');
         var monthsInput = group.querySelector('.service-months-input');
         
         var basePrice = priceInput ? parseInt(priceInput.value || 0) : parseInt(box.getAttribute('data-price') || 0);
         var months = monthsInput ? parseInt(monthsInput.value || 1) : 1;
-        var totalPrice = basePrice * months;
+        
+        var serviceName = box.value;
+        var type = box.getAttribute('data-type');
+        var isSub = (type === '訂閱服務');
 
-        var titleStr = box.value;
-        if (months > 1 || box.getAttribute('data-type') === '訂閱服務') {
-             titleStr += ' (x' + months + '個月)';
-        }
+        selNames.push(serviceName);
+        
+        var detailsArr = [];
+        group.querySelectorAll('.child-box:checked').forEach(function(c){ 
+           var rawChild = c.value;
+           if(rawChild.startsWith('[')) {
+              var parts = rawChild.split('] ');
+              if(parts.length > 1) rawChild = parts.slice(1).join('] ');
+           }
+           detailsArr.push(rawChild.trim());
+        }); 
 
-        selText += '- ' + titleStr + ' | $' + totalPrice.toLocaleString('en-US') + '\n'; 
-        box.closest('details').querySelectorAll('.child-box:checked').forEach(function(c){ selText += '  ' + c.value.split('] ')[1] + '\n'; }); 
+        servicesMatrix.push({
+           name: serviceName,
+           type: type,
+           isSub: isSub,
+           basePrice: basePrice,
+           months: months,
+           totalPrice: basePrice * months,
+           details: detailsArr
+        });
       });
       
       window.currentSelectedServiceNames = selNames; 
@@ -1499,7 +1525,8 @@
         company: document.getElementById('client-company').value, taxId: document.getElementById('client-taxId').value, 
         rep: document.getElementById('client-rep').value, contact: document.getElementById('client-contact').value, 
         phone: document.getElementById('client-phone').value, address: document.getElementById('client-address').value, 
-        selectedServices: selText, subtotal: currentSubtotal, tax: currentTax, 
+        selectedServices: JSON.stringify(servicesMatrix), // 💡 寫入 JSON 矩陣
+        subtotal: currentSubtotal, tax: currentTax, 
         total: currentOriginalTotal, 
         customPrice: discountVal ? currentTotal : "", 
         terms: document.getElementById('client-terms').value, signature: newSignatureDataUrl,
