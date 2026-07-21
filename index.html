@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>GROWTHX 特洛伊賦能陪跑系統</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <style>
+    :root { 
+      --primary: #1d1d1f; --primary-hover: #434344;
+      --accent: #0066cc; --accent-hover: #0077ed;
+      --surface: #ffffff; --bg: #f5f5f7; --border: #d2d2d7;
+      --text-main: #1d1d1f; --text-muted: #86868b;
+      --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      --sidebar-width: 260px;
+      --vctable: #b4d455; 
+    }
+    
+    * { box-sizing: border-box; }
+    html, body { max-width: 100vw; overflow-x: hidden; position: relative; height: 100%; }
+    body { background-color: var(--bg); font-family: var(--font-family); margin: 0; padding: 0; color: var(--text-main); -webkit-font-smoothing: antialiased; }
+    
+    .toast-container { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 12px; pointer-events: none; width: 90%; max-width: 400px; align-items: center; }
+    .custom-toast { background: rgba(255,255,255,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--text-main); padding: 14px 24px; border-radius: 999px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); border: 1px solid rgba(255,255,255,0.5); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-20px) scale(0.95); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: auto; }
+    .custom-toast.show { opacity: 1; transform: translateY(0) scale(1); }
+    
+    .toast-error { background: rgba(255, 59, 48, 0.95) !important; color: white !important; border: none !important; }
+    .toast-success { background: rgba(52, 199, 89, 0.95) !important; color: white !important; border: none !important; }
+    .toast-warning { background: rgba(255, 149, 0, 0.95) !important; color: white !important; border: none !important; }
+
+    .app-layout { display: flex; height: 100vh; overflow: hidden; flex-direction: row; }
+    .sidebar { width: var(--sidebar-width); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 32px 20px; z-index: 100; }
+    .main-content { flex: 1; overflow-y: auto; padding: 40px; position: relative; scroll-behavior: smooth; }
+    
+    .brand-logo { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 12px; margin-bottom: 48px; padding-left: 12px; letter-spacing: -0.5px; color: var(--primary); text-transform: uppercase; }
+    .nav-menu { list-style: none; padding: 0; margin: 0; flex: 1; }
+    .nav-item { margin-bottom: 8px; }
+    .nav-link { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 12px; color: var(--text-muted); text-decoration: none; font-weight: 500; font-size: 15px; transition: all 0.2s ease; cursor: pointer; }
+    .nav-link:hover { background: rgba(0,0,0,0.04); color: var(--primary); }
+    .nav-link.active { background: var(--primary); color: white; }
+    
+    .panel-view { display: none; max-width: 700px; margin: 0 auto; animation: fadeIn 0.4s ease; }
+    .panel-view.active { display: block; }
+    
+    #tab-blog.active { display: flex !important; flex-direction: column; height: calc(100vh - 80px); max-width: 100%; padding: 0; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .card-panel { background: var(--surface); border-radius: 24px; padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.02); }
+    .form-group-stack { display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px; width: 100%; }
+    .form-label { font-weight: 600; color: var(--primary); font-size: 14px; margin-bottom: 8px; }
+    .form-control { border-radius: 12px; border: 1px solid var(--border); padding: 16px; background: var(--bg); font-size: 15px; width: 100%; }
+    .form-control:focus { background: var(--surface); border-color: var(--primary); box-shadow: 0 0 0 4px rgba(0,0,0,0.05); outline: none; }
+    
+    .btn-brand { background-color: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; padding: 16px; width: 100%; font-size: 15px; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; text-decoration: none; }
+    .btn-brand:hover { background-color: var(--primary-hover); transform: translateY(-1px); color: white; }
+    .btn-outline { background-color: transparent; color: var(--primary); border: 1px solid var(--border); border-radius: 12px; font-weight: 600; padding: 14px; width: 100%; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; text-decoration: none; }
+
+    .vc-card { background: linear-gradient(135deg, #111, #2c2c2c); color: white; border-radius: 24px; padding: 32px; position: relative; overflow: hidden; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.15); }
+    .vc-card::before { content: ''; position: absolute; top: -50%; right: -20%; width: 300px; height: 300px; background: var(--vctable); filter: blur(80px); opacity: 0.2; border-radius: 50%; pointer-events: none; }
+    .vc-badge { background: rgba(180, 212, 85, 0.2); color: var(--vctable); padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; letter-spacing: 1px; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+    .vc-count { font-size: 56px; font-weight: 800; line-height: 1; margin: 0; color: white; }
+    .btn-vc { background-color: var(--vctable); color: #111; border: none; border-radius: 12px; font-weight: 700; padding: 14px; width: 100%; font-size: 15px; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; text-decoration: none; }
+    .btn-vc:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(180, 212, 85, 0.4); }
+    .vc-log-table { width: 100%; text-align: left; border-collapse: collapse; font-size: 14px; }
+    .vc-log-table th { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+    .vc-log-table td { padding: 16px 12px; border-bottom: 1px solid var(--border); color: var(--primary); white-space: nowrap; }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+    .modal-content { background: var(--surface); border-radius: 24px; padding: 32px; width: 100%; max-width: 480px; box-shadow: 0 24px 48px rgba(0,0,0,0.2); position: relative; }
+    
+    .sig-container { width: 100%; height: 60vh; max-height: 400px; background: #fff; border: 2px dashed var(--border); border-radius: 16px; margin-bottom: 24px; position: relative; overflow: hidden; touch-action: none; }
+    .sig-canvas-style { width: 100%; height: 100%; cursor: crosshair; }
+    .sig-date-stamp { position: absolute; bottom: 16px; right: 16px; color: var(--text-muted); font-family: monospace; font-size: 14px; pointer-events: none; opacity: 0.5; }
+
+    .profile-stack { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; margin-bottom: 32px; padding-bottom: 32px; border-bottom: 1px solid var(--border); }
+    .avatar-circle { width: 80px; height: 80px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 600; }
+    .member-code-box { background: var(--bg); padding: 8px 16px; border-radius: 8px; font-family: monospace; font-size: 14px; cursor: pointer; border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); }
+    .status-stack { width: 100%; background: var(--bg); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+
+    .app-card { background: var(--bg); border-radius: 16px; padding: 24px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; width: 100%; }
+    .gem-pro-card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 32px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.02); transition: 0.3s; }
+    .gem-pro-card:hover { border-color: var(--primary); box-shadow: 0 12px 32px rgba(0,0,0,0.06); transform: translateY(-2px); }
+    .gem-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--primary); align-self: flex-start; }
+    
+    .trigger-card { background: var(--primary); color: white; text-align: center; padding: 48px 20px; border-radius: 24px; cursor: pointer; transition: 0.3s; margin-bottom: 24px; border: none; }
+    .trigger-card:hover { transform: translateY(-4px); background: var(--primary-hover); }
+    .trigger-icon-wrapper { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.1); margin-bottom: 20px; }
+
+    .video-container { position: relative; width: 100%; max-height: 480px; background: #000; border-radius: 20px; margin-bottom: 24px; overflow: hidden; display: none; }
+    .video-player-style { width: 100%; height: 100%; object-fit: cover; }
+    .status-badge { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 12px; display: none; align-items: center; gap: 8px; }
+    .pulse-dot { width: 6px; height: 6px; background-color: #ff3b30; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } }
+    .pulse-badge { animation: pulseBadge 2s infinite; }
+    @keyframes pulseBadge { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
+    
+    .controls-overlay { position: absolute; background: rgba(0,0,0,0.6); backdrop-filter: blur(12px); padding: 12px 24px; border-radius: 100px; display: flex; gap: 24px; align-items: center; z-index: 20; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity: 1; }
+    
+    @media (min-width: 769px) or (orientation: landscape) {
+      .controls-overlay { bottom: 24px; left: 50%; transform: translateX(-50%); flex-direction: row; }
+      .mobile-header { display: none; }
+      .mobile-overlay { display: none; }
+    }
+    @media (max-width: 768px) {
+      .app-layout { flex-direction: column; }
+      .mobile-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--surface); border-bottom: 1px solid var(--border); z-index: 900; }
+      .menu-toggle-btn { background: none; border: none; color: var(--primary); padding: 0; display: flex; align-items: center; cursor: pointer; }
+      .brand-logo-mobile { font-size: 18px; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; margin: 0; }
+      
+      .sidebar { position: fixed; top: 0; left: -100%; width: 280px; height: 100%; height: 100dvh; overflow-y: auto; flex-direction: column; padding: 32px 20px; padding-bottom: max(32px, env(safe-area-inset-bottom)); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 4px 0 24px rgba(0,0,0,0.1); border-right: none; z-index: 1001; justify-content: flex-start; }
+      .sidebar.open { left: 0; }
+      .nav-menu { display: block; width: 100%; }
+      .nav-link { flex-direction: row; font-size: 15px; }
+      .main-content { padding: 20px; flex: 1; }
+      .mobile-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s ease; }
+      .mobile-overlay.open { opacity: 1; pointer-events: auto; }
+      .controls-overlay { right: 16px; top: 50%; transform: translateY(-50%); flex-direction: column; border-radius: 30px; padding: 24px 12px; }
+      
+      #tab-blog.active { height: calc(100vh - 72px); } 
+    }
+
+    .control-btn { background: none; border: none; color: white; cursor: pointer; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; outline: none; }
+    .control-btn:hover { background: rgba(255,255,255,0.2); }
+    .log-box { height: 120px; overflow-y: auto; background: var(--primary); color: #4ade80; padding: 16px; border-radius: 16px; font-family: monospace; font-size: 13px; margin-bottom: 24px; width: 100%; }
+    
+    .post-card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 32px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 24px; width: 100%; position: relative; }
+    .post-header { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    .details-content { padding: 16px; background: var(--bg); border-radius: 12px; font-size: 14px; line-height: 1.6; color: var(--text-muted); word-wrap: break-word; }
+    details summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; color: var(--primary); outline: none; }
+    details summary::-webkit-details-marker { display: none; }
+    
+    .comment-box { background: var(--bg); border-radius: 16px; padding: 16px; margin-top: 12px; border-left: 3px solid var(--primary); display: flex; flex-direction: column; gap: 6px; width: 100%; }
+
+    .step-section { display: none; animation: fadeIn 0.4s ease; }
+    .step-section.active { display: block; }
+
+    .copy-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .copy-btn:hover { background: var(--surface); color: var(--primary); border-color: var(--primary); }
+    
+    .pagination-container { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; padding-bottom: 24px; }
+    .page-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; padding: 8px 16px; font-size: 14px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+    .page-btn:hover:not(:disabled) { background: var(--bg); color: var(--primary); border-color: var(--primary); }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .post-toggle-details { width: 100%; }
+    .post-header-summary { display: flex; justify-content: space-between; align-items: center; cursor: pointer; list-style: none; outline: none; user-select: none; transition: background 0.2s; border-radius: 12px; }
+    .post-header-summary::-webkit-details-marker { display: none; }
+    .post-toggle-details[open] .expand-icon { transform: rotate(180deg); }
+    .expand-icon { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    .transcript-summary { display: flex; align-items: center; cursor: pointer; list-style: none; outline: none; padding: 14px 16px; background: rgba(0, 102, 204, 0.04); border-radius: 12px; transition: 0.2s; color: var(--accent); font-size: 15px; font-weight: 600; }
+    .transcript-summary:hover { background: rgba(0, 102, 204, 0.08); }
+    .transcript-summary::-webkit-details-marker { display: none; }
+    
+    .transcript-box { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px; font-size: 15px; line-height: 1.8; color: #333; max-height: 500px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; font-family: var(--font-family); }
+
+    .vocus-style { font-family: "Noto Sans TC", "SF Pro Display", sans-serif; font-size: 16px; line-height: 1.9; color: #2c2c2c; letter-spacing: 0.5px; }
+    .vocus-style h1, .vocus-style h2, .vocus-style h3, .vocus-style h4, .vocus-style h5, .vocus-style h6 { font-weight: 700; color: #1a1a1a; margin-top: 1.6em; margin-bottom: 0.6em; line-height: 1.4; }
+    .vocus-style strong { color: #111; background: linear-gradient(transparent 60%, rgba(0, 102, 204, 0.12) 40%); }
+    .vocus-style p { margin-bottom: 1.4em; }
+
+    /* Manager Dropdown */
+    .manager-menu-container { position: absolute; right: 32px; top: 32px; z-index: 50; }
+    .manager-dropdown { position: absolute; right: 0; top: 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); display: none; flex-direction: column; overflow: hidden; width: 140px; }
+    .manager-dropdown.show { display: flex; animation: fadeIn 0.2s ease; }
+    .manager-dropdown button { background: none; border: none; padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--primary); transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+    .manager-dropdown button:hover { background: var(--bg); }
+    .manager-dropdown button.text-danger { color: #ff3b30; border-top: 1px solid var(--border); }
+
+    /* Recommend Button Styles */
+    .btn-recommend { background: none; border: 1px solid var(--border); border-radius: 12px; padding: 8px 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
+    .btn-recommend:hover { background: rgba(0, 102, 204, 0.05); border-color: var(--accent); color: var(--accent); }
+    .btn-recommend.active { background: rgba(0, 102, 204, 0.1); border-color: var(--accent); color: var(--accent); }
+    .stat-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-muted); }
+
+    /* FFS School Details Toggle */
+    .school-details { background: var(--surface); border-radius: 24px; margin-bottom: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.02); overflow: hidden; }
+    .school-details .post-header-summary { padding: 16px; background: var(--bg); border: 1px solid var(--border) !important; margin-top: 8px; }
+    .school-details[open] .post-header-summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid var(--border) !important; padding-bottom: 16px !important; margin-bottom: 0 !important; background: transparent !important; }
+    
+    /* YT Custom Player Styles */
+    .custom-yt-wrapper { position: relative; padding-bottom: 56.25%; height: 0; border-radius: 16px; overflow: hidden; background: #000; box-shadow: 0 8px 32px rgba(0,0,0,0.15); margin-bottom: 24px; }
+    .yt-shield { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - 50px); z-index: 10; cursor: pointer; }
+    .custom-controls-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 50px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); z-index: 20; display: flex; align-items: center; padding: 0 16px; gap: 16px; opacity: 0; transition: opacity 0.3s; }
+    .custom-yt-wrapper:hover .custom-controls-bar { opacity: 1; }
+    .yt-progress-container { flex: 1; height: 6px; background: rgba(255,255,255,0.3); border-radius: 3px; cursor: pointer; position: relative; transition: height 0.2s; }
+    .yt-progress-container:hover { height: 8px; }
+    .yt-progress-fill { width: 0%; height: 100%; background: var(--accent); border-radius: 3px; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+<div id="toast-container" class="toast-container"></div>
+
+<div id="view-login" style="max-width: 400px; margin: 8vh auto; padding: 0 24px;">
+  <div class="card-panel border-0 text-center">
+    <div class="d-inline-flex justify-content-center align-items-center mb-4" style="background: var(--primary); color: white; padding: 16px; border-radius: 20px;">
+      <i data-lucide="layers" style="width: 32px; height: 32px;"></i>
+    </div>
+    <h3 class="fw-bold mb-1" style="letter-spacing: -0.5px;">GROWTHX</h3>
+    <p class="text-muted small fw-medium mb-4">特洛伊賦能陪跑系統</p>
+
+    <div id="step-email" class="step-section active text-start">
+      <div class="form-group-stack">
+        <div>
+          <label class="form-label">工作信箱</label>
+          <input type="email" id="loginEmail" class="form-control" placeholder="name@gmail.com">
+        </div>
+        <button class="btn-brand" onclick="checkEmail()" id="btnCheckEmail">下一步</button>
+      </div>
+    </div>
+
+    <div id="step-register" class="step-section text-start">
+      <div class="form-group-stack">
+        <div>
+          <label class="form-label">真實姓名</label>
+          <input type="text" id="regName" class="form-control" placeholder="請輸入姓名">
+        </div>
+        <div>
+          <label class="form-label text-danger">專屬 API KEY (必填)</label>
+          <input type="password" id="regApiKey" class="form-control" placeholder="sk-xxxxxxxxxxxxxxxx">
+          <div class="mt-2 text-end">
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size: 12px; color: var(--accent); font-weight: 500; text-decoration: none;">
+              前往申請 Google AI Studio 金鑰 <i data-lucide="external-link" style="width:12px; margin-left: 2px;"></i>
+            </a>
+          </div>
+        </div>
+        <button class="btn-brand" onclick="registerAccount()" id="btnRegister">註冊並發送驗證碼</button>
+        <button class="btn-outline" onclick="switchLoginStep('step-email')">返回上一頁</button>
+      </div>
+    </div>
+
+    <div id="step-code" class="step-section">
+      <div class="text-center mb-4 text-muted" style="font-size:14px;">
+        驗證碼已發送至 <br><strong id="displayTargetEmail" style="color: var(--primary);"></strong>
+      </div>
+      <div class="form-group-stack">
+        <input type="text" id="loginCode" class="form-control text-center fw-bold" placeholder="輸入 6 位數字" style="letter-spacing: 8px; font-size: 24px;" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
+        <button class="btn-brand" onclick="verifyCode()" id="btnVerify">驗證登入</button>
+        <button class="btn-outline" onclick="switchLoginStep('step-email')">重新填寫信箱</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-main" class="app-layout" style="display:none;">
+  <div class="mobile-header">
+    <button class="menu-toggle-btn" onclick="toggleMobileMenu()">
+      <i data-lucide="menu"></i>
+    </button>
+    <div class="brand-logo-mobile">GROWTHX</div>
+    <div style="width: 24px;"></div> 
+  </div>
+  
+  <div id="mobileOverlay" class="mobile-overlay" onclick="toggleMobileMenu()"></div>
+
+  <aside class="sidebar">
+    <div class="brand-logo">
+      <i data-lucide="layout-dashboard"></i> GROWTHX
+    </div>
+    <ul class="nav-menu">
+  <li class="nav-item"><a class="nav-link active" onclick="switchTab('tab-member')" id="nav-tab-member"><i data-lucide="user"></i> <span>會員中心</span></a></li>
+  
+  <li class="nav-item"><a class="nav-link" onclick="switchTab('tab-forum')" id="nav-tab-forum"><i data-lucide="message-circle"></i> <span>敲碗解惑</span></a></li>
+  
+  <li class="nav-item"><a class="nav-link" onclick="switchTab('tab-blog')" id="nav-tab-blog"><i data-lucide="book-open"></i> <span>實戰部落格</span></a></li>
+  
+  <li class="nav-item"><a class="nav-link" onclick="switchTab('tab-gem')" id="nav-tab-gem"><i data-lucide="cpu"></i> <span>AI 助教</span></a></li>
+  <li class="nav-item"><a class="nav-link" onclick="switchTab('tab-coach')" id="nav-tab-coach"><i data-lucide="video"></i> <span>陪跑日誌</span></a></li>
+  <li class="nav-item"><a class="nav-link" onclick="switchTab('tab-school')" id="nav-tab-school"><i data-lucide="graduation-cap"></i> <span>V.C.小學堂</span></a></li>
+</ul>
+    <div class="nav-footer mt-auto">
+      <button class="btn-outline w-100" style="border:none; background:var(--bg);" onclick="logout()"><i data-lucide="log-out" style="width:16px;"></i> 登出系統</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    
+    <div id="tab-member" class="panel-view active">
+      <div class="card-panel">
+        <div class="profile-stack">
+          <div class="avatar-circle" id="userInitial">U</div>
+          <h3 class="fw-bold m-0" id="profileNameDisplay" style="letter-spacing: -0.5px;">載入中...</h3>
+          <p class="text-muted m-0" id="profileEmailDisplay">email@domain.com</p>
+          <div class="member-code-box" onclick="copyCode()" title="點擊複製"><i data-lucide="copy" style="width:14px;"></i> <span id="memberCodeTxt">CODE</span></div>
+          
+          <div class="status-stack mt-2">
+            <div style="font-size:13px; color:var(--text-muted);">身份：<span id="roleTxt" class="fw-bold text-primary"></span></div>
+            <div style="font-size:13px; color:var(--text-muted);">註冊日：<span id="regDateTxt"></span></div>
+            <div class="fw-bold" style="font-size: 15px;">到期日 (1年)：<span id="expiryDateTxt"></span></div>
+            <a href="#" id="dynamicPaymentBtn" target="_blank" class="btn-outline mt-2 d-none" style="padding: 12px;"><i data-lucide="credit-card" style="width:16px;"></i> 月費會員繳款</a>
+          </div>
+        </div>
+        
+        <h5 class="fw-bold mb-4" style="letter-spacing: -0.5px;">系統與金鑰設定</h5>
+        <div class="form-group-stack">
+          <div><label class="form-label">真實姓名</label><input type="text" id="inputName" class="form-control"></div>
+          <div><label class="form-label text-danger">專屬 API_KEY (必填)</label><input type="password" id="inputApiKey" class="form-control"></div>
+          <button class="btn-brand" onclick="saveProfile()" id="btnSaveProfile">儲存設定</button>
+        </div>
+      </div>
+
+      <div class="vc-card">
+        <div class="vc-badge"><i data-lucide="award" style="width:14px;"></i> 專屬 V.C. CARD</div>
+        <p class="text-white-50 small mb-4">身為 Venture Coder，您可透過推薦學員累積 V.C. Point 點數，兌換進階指導服務。</p>
+        
+        <div class="row text-center mb-4 pb-4 border-bottom border-secondary">
+          <div class="col-4 border-end border-secondary">
+            <h4 class="fw-bold m-0 text-white" id="basicRefDisplay">0</h4>
+            <span class="text-white-50" style="font-size:12px;">基礎課推薦</span>
+          </div>
+          <div class="col-4 border-end border-secondary">
+            <h4 class="fw-bold m-0 text-white" id="advRefDisplay">0</h4>
+            <span class="text-white-50" style="font-size:12px;">進階課推薦</span>
+          </div>
+          <div class="col-4">
+            <h2 class="vc-count text-accent" id="vcUsesDisplay" style="font-size: 32px;">0</h2>
+            <span class="text-accent fw-bold" style="font-size:12px;">V.C. Point</span>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <span class="text-white-50" style="font-size: 14px;"><i data-lucide="info" style="width:16px;"></i> 1 點可兌換 Review / Table / Talk 一次</span>
+          <button class="btn-vc w-auto px-4" onclick="openSignatureModal()"><i data-lucide="pen-tool" style="width:18px;"></i> 使用點數</button>
+        </div>
+        
+        <div class="d-flex gap-3 mb-4">
+          <button class="btn-outline text-white border-secondary w-100" onclick="openTopUpModal()"><i data-lucide="credit-card" style="width:16px;"></i> 點數儲值</button>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4" style="font-size: 13px; color: #aaa;">
+          <span>上次儲值日：<strong id="vcLastTopUpDate" class="text-white">無</strong></span>
+          <span>上次金額：<strong id="vcLastTopUpAmount" class="text-white">$0</strong></span>
+        </div>
+
+        <div class="p-3 mt-2 rounded" style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2);">
+          <h6 class="fw-bold text-white mb-3" style="font-size:14px;"><i data-lucide="link" style="width:16px; margin-right:4px;"></i>您的專屬課程推薦連結</h6>
+          
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-white-50" style="font-size:12px;">基礎課程 ($6000/人) - 成功報名 +1 V.C. Point</span>
+            </div>
+            <div class="d-flex gap-2">
+              <input type="text" id="linkBasic" class="form-control bg-dark text-white border-secondary" style="font-size:12px; padding:8px;" readonly>
+              <button class="btn-brand p-2 w-auto d-flex align-items-center justify-content-center" style="min-width: 36px;" onclick="copyContent('linkBasic', this, true)"><i data-lucide="copy" style="width:16px;"></i></button>
+            </div>
+          </div>
+          
+          <div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-white-50" style="font-size:12px;">進階課程 ($9000/人) - 成功報名 +1 V.C. Point</span>
+            </div>
+            <div class="d-flex gap-2">
+              <input type="text" id="linkAdv" class="form-control bg-dark text-white border-secondary" style="font-size:12px; padding:8px;" readonly>
+              <button class="btn-brand p-2 w-auto d-flex align-items-center justify-content-center" style="min-width: 36px;" onclick="copyContent('linkAdv', this, true)"><i data-lucide="copy" style="width:16px;"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+
+      <div class="card-panel">
+        <h5 class="fw-bold mb-4">V.C. Point 增長與使用紀錄</h5>
+        <div style="overflow-x: auto;">
+          <table class="vc-log-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>類型</th>
+                <th>金額</th>
+                <th>點數異動</th>
+                <th>結餘</th>
+                <th>備註 / 憑證</th>
+              </tr>
+            </thead>
+            <tbody id="vcLogTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-4 mt-5">
+        <h4 class="fw-bold m-0" style="letter-spacing: -0.5px;">數位資產清單</h4>
+        <button class="btn-outline w-auto px-4" onclick="document.getElementById('addAppForm').style.display='block'">新增</button>
+      </div>
+      
+      <div id="addAppForm" class="card-panel" style="display:none;">
+        <h6 class="fw-bold mb-4">登錄數位資產系統</h6>
+        <div class="form-group-stack">
+          <div><label class="form-label">系統名稱</label><input type="text" id="appName" class="form-control" placeholder="例：特洛伊客戶預約系統"></div>
+          <div><label class="form-label">用途簡述</label><input type="text" id="appDesc" class="form-control" placeholder="例：協助自動接單與抓取漏單大腦"></div>
+          <div><label class="form-label">系統網址 <span class="text-muted fw-normal">(內部備註)</span></label><input type="url" id="appUrl" class="form-control" placeholder="範例：GAS 或 GitHub Pages 部署網址"></div>
+          <button class="btn-brand" onclick="submitWebApp()">確認登錄資產</button>
+          <button class="btn-outline" onclick="document.getElementById('addAppForm').style.display='none'">取消</button>
+        </div>
+      </div>
+      
+      <div id="webAppsContainer" class="form-group-stack"></div>
+    </div>
+
+    <div id="tab-gem" class="panel-view">
+      <div class="mb-5 text-center text-md-start">
+        <h2 class="fw-bold mb-2" style="letter-spacing: -1px;">GROWTHX 數位轉型</h2>
+        <h5 class="text-muted fw-normal mb-4">AI助教 - 組合應用指南</h5>
+      </div>
+      <div id="gemContainer" class="form-group-stack"></div>
+    </div>
+
+    <div id="recordUI" class="card-panel mb-5" style="display:none;">
+      <h4 class="fw-bold mb-4" style="letter-spacing: -0.5px;">全端除錯與錄影引擎</h4>
+      <div class="video-container" id="videoContainer" onmousemove="handleVideoInteraction()" ontouchstart="handleVideoInteraction()">
+        <div id="recBadge" class="status-badge"><div class="pulse-dot"></div><span>錄製中</span></div>
+        <video id="mediaPlayer" class="video-player-style" autoplay muted playsinline></video>
+        <div class="controls-overlay" id="playerControls">
+           <button class="control-btn cancel-btn" id="btnCancelStream" onclick="cancelStream()" title="取消啟用硬體"><i data-lucide="x" style="color: #ff9500; width: 24px;"></i></button>
+           <button class="control-btn" onclick="switchSourceAction()"><i data-lucide="switch-camera" id="icon-source"></i></button>
+           <button class="control-btn" onclick="toggleVideo()"><i data-lucide="video-off" id="icon-video"></i></button>
+           <button class="control-btn pause-btn" id="btnPause" onclick="pauseMeeting()" style="display:none;"><i data-lucide="pause"></i></button>
+           <button class="control-btn play-btn" id="btnResume" onclick="resumeMeeting()" style="display:none;"><i data-lucide="play"></i></button>
+           <button class="control-btn stop-btn" id="btnStop" onclick="stopMeeting()" style="display:none;"><i data-lucide="square" style="color: #ff3b30;"></i></button>
+        </div>
+      </div>
+      <div class="form-group-stack">
+        <button class="btn-brand" id="btnStartPost" onclick="startPost()"><i data-lucide="play-circle" style="width:18px;"></i> 啟動系統錄製</button>
+        <div id="systemLog" class="log-box" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div id="tab-coach" class="panel-view">
+      <div id="triggerRecordBox" class="trigger-card" onclick="toggleRecordUI('posts')">
+        <div class="trigger-icon-wrapper"><i data-lucide="video" style="width: 32px; height: 32px; color: white;"></i></div>
+        <h4 class="fw-bold m-0" style="letter-spacing: -0.5px;">點擊開啟相機與螢幕權限</h4>
+        <p class="mt-2 mb-0" style="color: rgba(255,255,255,0.7); font-size: 14px;">啟動陪跑系統雙軌音訊與預覽引擎</p>
+      </div>
+      
+      <div class="mb-4 mt-5"><h4 class="fw-bold m-0" style="letter-spacing: -0.5px;">歷史日誌總帳</h4></div>
+      <div id="feedContainer"></div>
+    </div>
+
+    <div id="tab-school" class="panel-view">
+      <div class="mb-4">
+        <h2 class="fw-bold mb-1">V.C.小學堂</h2>
+        <p class="text-muted small">教練專屬影音發布與全體學員互動大本營</p>
+      </div>
+
+      <div class="card-panel mb-4 p-4">
+        <h6 class="fw-bold mb-4">學堂課程過濾與排序</h6>
+        <div class="form-group-stack">
+          <div>
+            <label class="form-label text-muted small mb-2">關鍵字檢索</label>
+            <div class="d-flex align-items-center form-control p-0 overflow-hidden">
+              <div class="ps-3 pe-2 text-muted"><i data-lucide="search" style="width:16px;"></i></div>
+              <input type="text" id="schoolSearchKeyword" class="form-control border-0 bg-transparent shadow-none" placeholder="輸入課程標題或相關關鍵字..." oninput="filterSchoolFeed()">
+            </div>
+          </div>
+          <div>
+            <label class="form-label text-muted small mb-2">排序方式</label>
+            <select id="schoolSortOrder" class="form-control" onchange="filterSchoolFeed()">
+              <option value="newest">發布時間：由新到舊 (最新在上)</option>
+              <option value="oldest">發布時間：由舊到新 (最舊在上)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label text-muted small mb-2">篩選起始日</label>
+            <div class="d-flex align-items-center form-control p-0 overflow-hidden">
+              <div class="ps-3 pe-2 text-muted"><i data-lucide="calendar" style="width:16px;"></i></div>
+              <input type="date" id="schoolStartDate" class="form-control border-0 bg-transparent shadow-none" onchange="filterSchoolFeed()">
+            </div>
+          </div>
+          <div>
+            <label class="form-label text-muted small mb-2">篩選結束日</label>
+            <div class="d-flex align-items-center form-control p-0 overflow-hidden">
+              <div class="ps-3 pe-2 text-muted"><i data-lucide="calendar" style="width:16px;"></i></div>
+              <input type="date" id="schoolEndDate" class="form-control border-0 bg-transparent shadow-none" onchange="filterSchoolFeed()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="coachPublishArea" class="card-panel" style="display:none;">
+        <h5 class="fw-bold mb-3">發布全新學堂教材</h5>
+        <div class="form-group-stack mt-4">
+          <div>
+            <label class="form-label">YouTube 影片連結</label>
+            <input type="url" id="schoolYtUrl" class="form-control" placeholder="例如：https://www.youtube.com/watch?v=xxxx">
+          </div>
+          <div>
+            <label class="form-label">教材標題與內容描述</label>
+            <textarea id="schoolPostContent" class="form-control" rows="4" placeholder="第一行將自動作為標題..."></textarea>
+          </div>
+          <button class="btn-brand" id="btnPublishSchool" onclick="publishSchoolPost()"><i data-lucide="send" style="width:16px;"></i> 確定發布</button>
+        </div>
+      </div>
+
+      <div id="schoolFeedContainer" class="form-group-stack mt-4"></div>
+    </div>
+    
+    <div id="tab-blog" class="panel-view" style="max-width: 100%; padding-bottom: 0;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h2 class="fw-bold mb-1">實戰部落格</h2>
+          <p class="text-muted small m-0">GROWTHX 方格子專欄與實戰紀錄</p>
+        </div>
+        <button class="btn-outline w-auto px-3 py-2" onclick="document.getElementById('blogIframe').src = document.getElementById('blogIframe').src"><i data-lucide="refresh-cw" style="width:16px;"></i> 重新整理</button>
+      </div>
+      
+      <div class="card-panel p-0" style="flex: 1; border-radius: 24px; overflow: hidden; position: relative; margin-bottom: 0; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
+        <iframe id="blogIframe" src="https://vocus.cc/salon/bizgrowthxai" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
+        </iframe>
+      </div>
+    </div>
+
+    <div id="tab-forum" class="panel-view">
+      <div class="mb-4">
+        <h2 class="fw-bold mb-1">敲碗解惑論壇</h2>
+        <p class="text-muted small">學員交流、許願與問題解答的集散地</p>
+      </div>
+
+      <div class="card-panel mb-4 p-4">
+        <h6 class="fw-bold mb-4">論壇檢索與過濾</h6>
+        <div class="form-group-stack">
+          <div>
+            <label class="form-label text-muted small mb-2">關鍵字檢索</label>
+            <div class="d-flex align-items-center form-control p-0 overflow-hidden">
+              <div class="ps-3 pe-2 text-muted"><i data-lucide="search" style="width:16px;"></i></div>
+              <input type="text" id="forumSearchKeyword" class="form-control border-0 bg-transparent shadow-none" placeholder="輸入關鍵字搜尋討論與問題..." oninput="filterForumPosts()">
+            </div>
+          </div>
+          <div>
+            <label class="form-label text-muted small mb-2">討論類型</label>
+            <div class="d-flex flex-wrap gap-2" id="forum-type-container"></div>
+          </div>
+          <div>
+            <label class="form-label text-muted small mb-2">篩選發佈日期</label>
+            <div class="d-flex align-items-center form-control p-0 overflow-hidden">
+              <div class="ps-3 pe-2 text-muted"><i data-lucide="calendar" style="width:16px;"></i></div>
+              <input type="date" id="forumDatePicker" class="form-control border-0 bg-transparent shadow-none" onchange="filterForumPosts()">
+            </div>
+            <button onclick="clearForumDate()" class="btn-outline mt-2 w-auto px-3 py-1" style="font-size:12px;">清除日期條件</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-panel mb-4">
+        <h5 class="fw-bold mb-0 d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="document.getElementById('newForumPostWrapper').style.display = document.getElementById('newForumPostWrapper').style.display === 'none' ? 'block' : 'none'">
+          <span><i data-lucide="edit-3" style="width:20px; margin-right:8px;"></i>發起新討論</span>
+          <i data-lucide="chevron-down" style="width:20px; color:var(--text-muted);"></i>
+        </h5>
+        <div id="newForumPostWrapper" style="display: none;" class="mt-4 border-top pt-4">
+          <div class="form-group-stack">
+            <div><label class="form-label">發文類型</label><select id="f_postType" class="form-control"><option value="敲碗">敲碗 (開發、教學需求)</option><option value="解惑">解惑 (AI 使用 QA)</option></select></div>
+            <div><label class="form-label">暱稱</label><input type="text" id="f_nickname" class="form-control" placeholder="您的稱呼 (必填)"></div>
+            <div><label class="form-label">性別</label><select id="f_gender" class="form-control"><option value="不透露">不透露</option><option value="男">男</option><option value="女">女</option></select></div>
+            <div><label class="form-label">職稱</label><input type="text" id="f_job" class="form-control" placeholder="選填"></div>
+            <div><label class="form-label">年齡</label><select id="f_age" class="form-control"><option value="不透露">不透露</option><option value="20歲以下">20歲以下</option><option value="21-30歲">21-30歲</option><option value="31-40歲">31-40歲</option><option value="41歲以上">41歲以上</option></select></div>
+            <div><label class="form-label">居住地</label><input type="text" id="f_location" class="form-control" placeholder="選填"></div>
+            <div><label class="form-label">討論內容</label><textarea id="f_content" class="form-control" rows="4" placeholder="請描述您的問題... (必填)"></textarea></div>
+            <button id="btnSubmitForum" class="btn-brand" onclick="submitForumPost()">發佈文章</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="forumPostsContainer"></div>
+    </div>
+    </main>
+</div>
+
+<div id="topupModal" class="modal-overlay">
+  <div class="modal-content text-center">
+    <h4 class="fw-bold mb-1">V.C. Point 儲值方案</h4>
+    <p class="text-muted small mb-4">付款完成後點數將立即無縫生效</p>
+    
+    <div class="form-group-stack">
+      <button class="btn-outline w-100" style="padding: 24px; flex-direction: column; gap: 8px; border: 2px solid var(--border);" onclick="executeTopUp(600)">
+        <div class="fw-bold" style="font-size: 20px; color: var(--primary);">$600 TWD</div>
+        <div class="text-muted small">獲得 1 點 V.C. Point</div>
+      </button>
+      
+      <button class="btn-outline w-100" style="padding: 24px; flex-direction: column; gap: 8px; border: 2px solid var(--accent); background: rgba(0,102,204,0.03);" onclick="executeTopUp(3000)">
+        <div class="fw-bold" style="font-size: 20px; color: var(--accent);">$3,000 TWD</div>
+        <div class="text-muted small fw-bold text-accent">獲得 6 點 V.C. Point (最划算)</div>
+      </button>
+    </div>
+    
+    <button class="btn-outline mt-4 border-0 text-muted" onclick="closeModals()">取消返回</button>
+  </div>
+</div>
+
+<div id="signatureModal" class="modal-overlay">
+  <div class="modal-content" style="max-width: 800px; width: 95%;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold m-0"><i data-lucide="pen-tool" style="width: 20px; margin-right: 8px;"></i> V.C. Coach 服務簽名核銷</h5>
+      <span class="badge bg-dark">將扣除 1 點 V.C. Point</span>
+    </div>
+    <p class="text-muted small mb-3">請選擇本次使用的服務，並由教練 (V.C. Coach) 於下方簽名確認。</p>
+    
+    <div class="mb-3">
+      <select id="vcServiceType" class="form-control fw-bold" style="color: var(--accent);">
+        <option value="V.C. Review">V.C. Review (基礎課程複訓 - 1堂)</option>
+        <option value="V.C. Table">V.C. Table (線下賦能輔導桌 - 0~3hr)</option>
+        <option value="V.C. Talk">V.C. Talk (線上賦能諮詢 - 1hr)</option>
+      </select>
+    </div>
+    
+    <div class="sig-container" style="height: 40vh;">
+      <canvas id="sigCanvas" class="sig-canvas-style"></canvas>
+      <div id="sigDateStamp" class="sig-date-stamp"></div>
+    </div>
+    
+    <div class="d-flex gap-3">
+      <button class="btn-outline" onclick="clearSignature()"><i data-lucide="rotate-ccw" style="width:16px;"></i> 清空</button>
+      <button class="btn-outline border-0 text-muted" onclick="closeModals()">取消</button>
+      <button class="btn-brand" id="btnConfirmSig" onclick="confirmSignature()"><i data-lucide="check" style="width:16px;"></i> 確認核銷</button>
+    </div>
+  </div>
+</div>
+
+<div id="editModal" class="modal-overlay">
+  <div class="modal-content">
+    <h5 class="fw-bold mb-3">編輯學堂教材描述</h5>
+    <input type="hidden" id="editRowId">
+    <textarea id="editContentArea" class="form-control mb-4" rows="4"></textarea>
+    <div class="d-flex gap-3">
+      <button class="btn-outline border-0 text-muted" onclick="closeModals()">取消</button>
+      <button class="btn-brand" onclick="saveEditPost()">儲存變更</button>
+    </div>
+  </div>
+</div>
+
+<div id="editCoachReplyModal" class="modal-overlay">
+  <div class="modal-content">
+    <h5 class="fw-bold mb-3"><i data-lucide="edit-2" style="width:20px; margin-right:4px;"></i> 編輯歷史回覆與指導總帳</h5>
+    <input type="hidden" id="editCoachReplyPostId">
+    <textarea id="editCoachReplyArea" class="form-control mb-4" rows="10"></textarea>
+    <div class="d-flex gap-3">
+      <button class="btn-outline border-0 text-muted" onclick="closeModals()">取消</button>
+      <button class="btn-brand" onclick="saveEditCoachReply()">儲存更新</button>
+    </div>
+  </div>
+</div>
+
+<div id="editPostBaseModal" class="modal-overlay">
+  <div class="modal-content" style="max-width: 600px; width: 95%;">
+    <h5 class="fw-bold mb-4"><i data-lucide="edit" style="width:20px; margin-right:4px;"></i> 編輯陪跑日誌全域內容</h5>
+    <input type="hidden" id="editPostBaseId">
+    
+    <div class="form-group-stack">
+      <div>
+        <label class="form-label">核心問題與追問總結 (支援 Markdown)</label>
+        <textarea id="editPostBaseSummary" class="form-control" rows="5"></textarea>
+      </div>
+      <div>
+        <label class="form-label">原始發問完整逐字稿</label>
+        <textarea id="editPostBaseTranscript" class="form-control" rows="5"></textarea>
+      </div>
+    </div>
+    
+    <div class="d-flex gap-3 mt-4">
+      <button class="btn-outline border-0 text-muted" onclick="closeModals()">取消</button>
+      <button class="btn-brand" onclick="saveEditPostBase()">儲存覆寫</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirmUIModal" class="modal-overlay">
+  <div class="modal-content text-center">
+    <div class="mb-3 d-flex justify-content-center">
+      <div style="background: rgba(255, 59, 48, 0.1); padding: 16px; border-radius: 50%;">
+        <i data-lucide="alert-triangle" style="width: 36px; height: 36px; color: #ff3b30;"></i>
+      </div>
+    </div>
+    <h4 class="fw-bold mb-2" id="confirmModalTitle">確認操作</h4>
+    <p class="text-muted small mb-4" id="confirmModalDesc" style="white-space: pre-wrap; line-height: 1.6;">您確定要執行此操作嗎？</p>
+    <div class="d-flex gap-3">
+      <button class="btn-outline border-0 text-muted w-50" onclick="document.getElementById('confirmUIModal').classList.remove('active')">取消返回</button>
+      <button class="btn-brand w-50" id="btnConfirmAction">確定執行</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+  
+  const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx1IyvzO_Z47G8TnVzb5AoKRtui8AYjcj2Et07VpQQQcFl0K2U6Y-o-E-pwHJzxP6Pl/exec"; 
+  const isGAS = typeof google !== 'undefined' && google.script;
+
+  let currentUser = JSON.parse(localStorage.getItem('gx_saas_user') || 'null');
+  let audioContext = null, mixedAudioDestination = null; 
+  let currentRecordContext = "posts"; 
+  
+  let currentReplyParentId = ""; 
+  let sessionUrls = [];
+  let sessionTranscripts = [];
+
+  let currentFeedPage = 1;
+  const feedPerPage = 10;
+  
+  let currentSchoolPage = 1;
+  const schoolPerPage = 10;
+  
+  let globalFeedData = [];
+  let globalSchoolFeedData = []; 
+
+  // 🔽 新增論壇全域變數
+  let forumData = [];
+  let currentForumSearch = '';
+  let currentForumType = '全部';
+  let currentForumDate = ''; 
+  let currentForumPage = 1;
+  const forumPerPage = 5;
+  
+  let ytApiLoaded = false;
+  const ytPlayers = {};
+  const ytTimers = {};
+
+  function onYouTubeIframeAPIReady() {
+    ytApiLoaded = true;
+  }
+
+  // ================= 統一 UI 確認視窗引擎 =================
+  let currentConfirmCallback = null;
+  function showUIConfirm(title, desc, confirmBtnText, btnColor, callback) {
+    document.getElementById('confirmModalTitle').innerText = title;
+    document.getElementById('confirmModalDesc').innerText = desc;
+    const btn = document.getElementById('btnConfirmAction');
+    btn.innerHTML = confirmBtnText;
+    btn.style.backgroundColor = btnColor;
+    currentConfirmCallback = callback;
+    document.getElementById('confirmUIModal').classList.add('active');
+    lucide.createIcons();
+  }
+
+  document.getElementById('btnConfirmAction').addEventListener('click', () => {
+    if(currentConfirmCallback) currentConfirmCallback();
+    document.getElementById('confirmUIModal').classList.remove('active');
+  });
+
+  // ================= 簽名板 Canvas 邏輯 =================
+  const canvas = document.getElementById('sigCanvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+
+  function resizeCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    ctx.scale(ratio, ratio);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#1d1d1f';
+    ctx.lineWidth = 4;
+  }
+  
+  window.addEventListener('resize', resizeCanvas);
+  
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function startDraw(e) { e.preventDefault(); drawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
+  function draw(e) { if (!drawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
+  function endDraw() { drawing = false; ctx.beginPath(); }
+
+  canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mouseout', endDraw);
+  canvas.addEventListener('touchstart', startDraw, {passive: false}); canvas.addEventListener('touchmove', draw, {passive: false}); canvas.addEventListener('touchend', endDraw);
+
+  function openSignatureModal() { document.getElementById('signatureModal').classList.add('active'); document.getElementById('sigDateStamp').innerText = new Date().toLocaleString('zh-TW', {hour12:false}); setTimeout(resizeCanvas, 50); }
+  function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+  function closeModals() { document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active')); clearSignature(); }
+
+  function confirmSignature() {
+    const blank = document.createElement('canvas'); blank.width = canvas.width; blank.height = canvas.height;
+    if(canvas.toDataURL() === blank.toDataURL()) { return showToast("請教練先於上方簽名確認", "warning"); }
+
+    const btn = document.getElementById('btnConfirmSig'); btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="spin" style="width:16px;"></i> 核銷中...'; lucide.createIcons();
+    
+    ctx.font = "14px monospace"; ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillText(document.getElementById('sigDateStamp').innerText, canvas.offsetWidth - 160, canvas.offsetHeight - 20);
+    const sigData = canvas.toDataURL('image/png');
+
+    const selectedService = document.getElementById('vcServiceType').value;
+
+    // 樂觀更新 V.C. CARD 點數與明細
+    const vcUsesEl = document.getElementById('vcUsesDisplay');
+    let currentUses = parseInt(vcUsesEl.innerText) || 0;
+    if (currentUses > 0) {
+        vcUsesEl.innerText = currentUses - 1;
+        const vcLogBody = document.getElementById('vcLogTableBody');
+        const today = new Date().toLocaleString('zh-TW', {hour12:false}).split(' ')[0];
+        const fakeRow = `<tr><td class="text-muted" style="font-family: monospace;">${today}</td><td><span class="badge bg-primary">使用 (${selectedService})</span></td><td>$0</td><td class="fw-bold text-danger">-1</td><td class="fw-bold">${currentUses - 1} 點</td><td><span class="badge bg-dark">處理中...</span></td></tr>`;
+        if(vcLogBody.innerHTML.includes('目前尚無交易明細')) vcLogBody.innerHTML = '';
+        vcLogBody.innerHTML = fakeRow + vcLogBody.innerHTML;
+    }
+    
+    showToast("核銷已送出", "success"); closeModals();
+    btn.disabled = false; btn.innerHTML = '<i data-lucide="check" style="width:16px;"></i> 確認核銷'; lucide.createIcons();
+
+    api({ action: "consumeVCTable", email: currentUser.email, signatureBase64: sigData, serviceType: selectedService }).catch(e => showToast("核銷失敗，請重新整理", "error")); 
+  }
+
+  function openTopUpModal() { document.getElementById('topupModal').classList.add('active'); }
+  
+  // 🌟 取消模擬，直接建立真實訂單並跳轉黑貓PAY
+  function executeTopUp(amount) {
+    // 確保傳送給後端的金額是純數字格式
+    const cleanAmount = parseInt(amount, 10);
+    
+    showUIConfirm("確認前往付款", `是否確定要儲值 $${cleanAmount}？\n系統將為您導向黑貓 PAY 安全付款頁面。`, "確定前往", "var(--accent)", async () => {
+      closeModals(); 
+      showToast("正在建立加密連線...", "success");
+
+      try {
+        // 呼叫後端新的 createTopUpOrder 路由，傳入純數字的 amount
+        const payload = { action: "createTopUpOrder", email: currentUser.email, amount: cleanAmount };
+        const response = await fetch(GAS_WEBAPP_URL, { method: 'POST', body: JSON.stringify(payload) });
+        const res = await response.json();
+
+        if (res.status === 'success' && res.data.url) {
+           showToast("訂單建立成功，跳轉中...", "success");
+           window.location.href = res.data.url;
+        } else {
+           showToast(res.message, "error");
+        }
+      } catch(e) {
+        showToast("連線失敗，請稍後再試", "error");
+      }
+    });
+  }
+
+  function submitWebApp() {
+      const name = document.getElementById('appName').value.trim();
+      const desc = document.getElementById('appDesc').value.trim();
+      const url = document.getElementById('appUrl').value.trim();
+      if(!name || !url) return showToast("名稱與網址為必填", "warning");
+
+      // 樂觀更新應用程式清單
+      const appsContainer = document.getElementById('webAppsContainer');
+      const appHtml = `<div class="app-card"><h6 class="fw-bold m-0">${name}</h6><p class="text-muted small m-0">${desc}</p><a href="${url}" target="_blank" class="btn-outline mt-2"><i data-lucide="external-link" style="width:14px;"></i> 開啟應用</a></div>`;
+      if(appsContainer.innerHTML.includes('尚未登錄任何數位資產')) appsContainer.innerHTML = '';
+      appsContainer.innerHTML += appHtml;
+      lucide.createIcons();
+      
+      document.getElementById('appName').value = '';
+      document.getElementById('appDesc').value = '';
+      document.getElementById('appUrl').value = '';
+      document.getElementById('addAppForm').style.display = 'none';
+      showToast("資產登錄成功", "success");
+      
+      api({ action: "addWebApp", email: currentUser.email, name: name, desc: desc, url: url }).catch(e => console.error(e));
+  }
+
+  function renderGemMatrix() {
+    const gems = [
+      { 
+        name: "GEM 1：工作流水線拆解器", 
+        subtitle: "抓出隱形吸血鬼的營運專家", 
+        intro: "把你和員工每天重複到手酸的「手眼動作」，像工廠傳送帶一樣切碎檢查，找出痛點。", 
+        output: "【矩陣一：現況流程與應變地圖】", 
+        value: "將抱怨變升級養分，確保系統絕不漏單。", 
+        journey: "<strong>1. 輸入總帳</strong><br><strong>2. 畫出傳送帶</strong><br><strong>3. 獵殺吸血鬼</strong>", 
+        url: "https://gemini.google.com/gem/1IZf-gF-g4a0DhfTyqJar1vY9-ctI8DN_?usp=sharing" 
+      },
+      { 
+        name: "GEM 2：系統許願機 (老闆需求書)", 
+        subtitle: "抓漏老闆大腦的戰略軍師", 
+        intro: "專門幫你把大腦裡「好想做個自動化系統」的模糊願景，翻譯成真正能幫公司省時間、賺大錢的「黃金賺錢計畫」。", 
+        output: "【矩陣二：老闆需求總帳】", 
+        value: "省下數萬溝通成本，清楚定錨系統價值。", 
+        journey: "<strong>1. 大膽許願</strong><br><strong>2. 點餐答題</strong><br><strong>3. 定錨解鎖</strong>", 
+        url: "https://gemini.google.com/gem/1BF4CZ6zBE73M9Psn1jADmlAUNtHRjPAt?usp=sharing" 
+      },
+      { 
+        name: "GEM 3：數位新工廠設計師 (超級PM)", 
+        subtitle: "蓋房子不踩坑的施工藍圖總監", 
+        intro: "把前兩步的流程，正式變成一張蓋房子用的「實體施工圖紙」。", 
+        output: "【矩陣三：終極施工產品規格書】", 
+        value: "工程師與 AI 工具看一眼就能開工的終極圖紙。", 
+        journey: "<strong>1. 輸入藍圖</strong><br><strong>2. 實體工廠巡禮</strong><br><strong>3. 鎖定 16 大參數</strong>", 
+        url: "https://gemini.google.com/gem/15zr2c8BpxfWITDkxB3poJNnFnTfEgY9s?usp=sharing" 
+      },
+      { 
+        name: "GEM 4：WebAPP 電影級編劇", 
+        subtitle: "描繪具體使用者旅程的體驗大師", 
+        intro: "講述明確具體的使用者旅程故事和功能運作故事，讓開發者與系統能完全對齊使用者體驗。", 
+        output: "【矩陣四：使用者故事與互動腳本】", 
+        value: "確保開發出來的系統絕對符合人類直覺，好用不卡關。", 
+        journey: "<strong>1. 角色設定</strong><br><strong>2. 旅程推演</strong><br><strong>3. 劇本定稿</strong>", 
+        url: "https://gemini.google.com/gem/1TRxK8jmWxtjTM-y52tbGSjqWJCYOittz?usp=sharing" 
+      },
+      { 
+        name: "GEM 5：全能 AI 開發特助", 
+        subtitle: "邊體驗邊生出系統的終極魔術師", 
+        intro: "不用懂程式碼，像個挑剔的體驗官挑毛病，助教一字不漏把網頁與後端寫好雙手奉上。", 
+        output: "【100% 完整雙棲前端網頁原始碼】", 
+        value: "文科生也能當場擁有活生生的跨平台系統！", 
+        journey: "<strong>1. 圖紙合體</strong><br><strong>2. 代碼爆發</strong><br><strong>3. 權限解鎖</strong><br><strong>4. 增量升級</strong>", 
+        url: "https://gemini.google.com/gem/1CbYqeQgI3pWRrtN1PTp47suYfhqyUIom?usp=sharing" 
+      },
+      { 
+        name: "GEM 6：迭代指令優化師", 
+        subtitle: "專為 Vibe Coding 設計的 AI 產品經理", 
+        intro: "專門協助非技術背景學員，將模糊的 Bug 或優化需求，透過互動問答收斂成精準的結構化開發指令。", 
+        output: "【終極防雷 AI 開發指令 (Prompt)】", 
+        value: "讓寫程式的 AI 完美幫你修改代碼，杜絕越改越錯的鬼故事！", 
+        journey: "<strong>1. 現況診斷</strong><br><strong>2. 深度技術剖析</strong><br><strong>3. 精確指令生成</strong>", 
+        // 👇 提醒：請將下方的網址替換為你實際 GEM 6 的連結
+        url: "https://gemini.google.com/gem/請填入你的GEM6網址" 
+      }
+    ];
+
+    document.getElementById('gemContainer').innerHTML = gems.map(g => `
+      <div class="gem-pro-card">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="gem-icon-box" style="flex-shrink:0;"><i data-lucide="cpu" style="width:24px;"></i></div>
+          <div><h4 class="fw-bold m-0" style="color: var(--primary); letter-spacing:-0.5px;">${g.name}</h4><p class="text-muted m-0 small fw-medium mt-1">${g.subtitle}</p></div>
+        </div>
+        <p class="fw-bold text-primary mb-2" style="font-size:14px;"><i data-lucide="lightbulb" style="width:16px; margin-right:4px;"></i>一句話白話介紹</p>
+        <p class="small text-muted mb-4" style="line-height:1.6;">${g.intro}</p>
+        <div class="p-3 bg-light rounded mb-4" style="border-left: 3px solid var(--accent);"><p class="fw-bold mb-2" style="font-size: 13.5px;"><i data-lucide="target" style="width:14px; margin-right:4px;"></i>階段成果：${g.output}</p><p class="small text-muted m-0" style="line-height:1.6;"><strong>落地價值：</strong>${g.value}</p></div>
+        <details><summary class="small fw-bold"><i data-lucide="map" style="width:14px; margin-right:4px;"></i>查看學員互動旅程</summary><div class="details-content mt-2 small text-muted" style="line-height:1.7;">${g.journey}</div></details>
+        <a href="${g.url}" target="_blank" class="btn-brand mt-4">進入大腦通道 <i data-lucide="arrow-right" style="width:16px;"></i></a>
+      </div>
+    `).join('');
+    lucide.createIcons();
+  }
+
+  function copyContent(elementId, btn, isInput = false) {
+    const el = document.getElementById(elementId); let text = isInput ? el.value : el.innerText;
+    navigator.clipboard.writeText(text).then(() => { const originalHtml = btn.innerHTML; btn.innerHTML = '<i data-lucide="check" style="width:14px;"></i> 已複製'; lucide.createIcons(); setTimeout(() => { btn.innerHTML = originalHtml; lucide.createIcons(); }, 2000); });
+  }
+
+  function showToast(message, type = 'error') {
+    const container = document.getElementById('toast-container'); const toast = document.createElement('div'); toast.className = `custom-toast toast-${type}`;
+    const icon = type === 'success' ? 'check-circle' : (type === 'warning' ? 'alert-triangle' : 'alert-circle');
+    toast.innerHTML = `<i data-lucide="${icon}" style="width:18px; flex-shrink:0;"></i><span>${message}</span>`;
+    container.appendChild(toast); lucide.createIcons();
+    setTimeout(() => toast.classList.add('show'), 10); setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 4000);
+  }
+
+  async function api(payload) {
+    if (isGAS) {
+      return new Promise((resolve, reject) => {
+        google.script.run.withSuccessHandler(resStr => { try { const res = JSON.parse(resStr); if(res.status === 'success') resolve(res.data); else reject(new Error(res.message)); } catch(e) { reject(new Error("系統資料格式異常")); } }).withFailureHandler(err => reject(err)).processFrontendApi(JSON.stringify(payload));
+      });
+    } else {
+      try { const response = await fetch(GAS_WEBAPP_URL, { method: 'POST', body: JSON.stringify(payload) }); const res = await response.json(); if(res.status === 'success') return res.data; else throw new Error(res.message); } catch (err) { throw new Error("伺服器無法存取，請檢查網路狀態。"); }
+    }
+  }
+
+  // 背景同步函式保留以備不時之需，但在樂觀 UI 操作中已將其靜默呼叫拔除以確保重整前皆為快取資料
+  async function backgroundSync() {
+    try {
+      const data = await api({ action: "getDashboardData", email: currentUser.email, role: currentUser.role });
+      globalFeedData = data.posts || [];
+      globalSchoolFeedData = data.schoolFeed || [];
+      forumData = data.forumPosts || [];
+    } catch(e) { console.error("背景同步失敗", e); }
+  }
+
+  if (currentUser && currentUser.email) {
+    document.getElementById('view-login').style.display = 'none';
+    document.getElementById('view-main').style.display = 'flex';
+    if(currentUser.role === '教練' || currentUser.email === "alwayslucky2hand@gmail.com") {
+      document.getElementById('coachPublishArea').style.display = 'block';
+    }
+    
+    // 👇 新增這行：執行 AI 助教卡片的渲染函式
+    renderGemMatrix();
+    
+    loadDashboard(); 
+  }
+
+  async function checkEmail() {
+    const email = document.getElementById('loginEmail').value;
+    if(!email) return showToast("請輸入工作信箱", "warning");
+    if(!email.toLowerCase().endsWith('@gmail.com')) return showToast("請使用 Google (Gmail) 帳號註冊與登入", "warning");
+    try {
+      const res = await api({ action: "checkEmail", email });
+      if (res.isRegistered) { await api({ action: "sendCode", email }); document.getElementById('displayTargetEmail').innerText = email; switchLoginStep('step-code'); } else { switchLoginStep('step-register'); }
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  async function registerAccount() {
+    const email = document.getElementById('loginEmail').value; const name = document.getElementById('regName').value; const apiKey = document.getElementById('regApiKey').value;
+    if (!email.toLowerCase().endsWith('@gmail.com')) return showToast("請使用 Google (Gmail) 帳號註冊", "warning"); if (!name || !apiKey) return showToast("欄位皆為必填", "warning");
+    try { await api({ action: "registerAndSendCode", email, name, apiKey }); document.getElementById('displayTargetEmail').innerText = email; switchLoginStep('step-code'); } catch(e) { showToast(e.message, "error"); }
+  }
+  
+  async function verifyCode() {
+    const email = document.getElementById('loginEmail').value; const code = document.getElementById('loginCode').value;
+    try { const data = await api({ action: "verifyCode", email, code }); localStorage.setItem('gx_saas_user', JSON.stringify(data)); location.reload(); } catch(e) { showToast(e.message, "error"); }
+  }
+
+  function logout() { localStorage.removeItem('gx_saas_user'); location.reload(); }
+  function switchLoginStep(stepId) { document.querySelectorAll('.step-section').forEach(el => el.classList.remove('active')); document.getElementById(stepId).classList.add('active'); }
+  
+  function toggleMobileMenu() {
+    const sidebar = document.querySelector('.sidebar'); const overlay = document.getElementById('mobileOverlay');
+    if(sidebar) sidebar.classList.toggle('open'); if(overlay) overlay.classList.toggle('open');
+  }
+
+  function switchTab(tabId) { 
+    document.querySelectorAll('.panel-view').forEach(el => el.classList.remove('active')); 
+    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active')); 
+    document.getElementById(tabId).classList.add('active'); 
+    document.getElementById('nav-' + tabId).classList.add('active'); 
+    
+    const sidebar = document.querySelector('.sidebar'); const overlay = document.getElementById('mobileOverlay');
+    if (sidebar && sidebar.classList.contains('open')) { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+    
+    if(tabId === 'tab-school') filterSchoolFeed();
+
+    if(tabId === 'tab-forum') {
+      if(!document.getElementById('f_nickname').value && currentUser.name) {
+          document.getElementById('f_nickname').value = currentUser.name;
+      }
+      renderForumTypeFilter();
+      renderForumPosts();
+    }
+  }
+
+  async function loadDashboard() {
+    try {
+      const data = await api({ action: "getDashboardData", email: currentUser.email, role: currentUser.role });
+      
+      const p = data.profile || {};
+      document.getElementById('profileEmailDisplay').innerText = p.email || currentUser.email;
+      document.getElementById('profileNameDisplay').innerText = p.name || '未填寫姓名';
+      document.getElementById('userInitial').innerText = (p.name ? p.name.charAt(0) : 'U').toUpperCase();
+      document.getElementById('memberCodeTxt').innerText = (p.email || currentUser.email).split('@')[0];
+      document.getElementById('roleTxt').innerText = p.role || '學員';
+      document.getElementById('regDateTxt').innerText = p.regDate || '-';
+      document.getElementById('expiryDateTxt').innerText = p.expiryDate || '-';
+      document.getElementById('inputName').value = p.name || '';
+      document.getElementById('inputApiKey').value = p.apiKey || '';
+      
+      if (p.paymentUrl) document.getElementById('dynamicPaymentBtn').href = p.paymentUrl;
+      document.getElementById('vcUsesDisplay').innerText = p.vcUses;
+      
+      // 🌟 將 ISO 日期字串轉換為 yyyy/MM/dd 格式
+      let formattedDate = p.lastTopUpDate;
+      if (p.lastTopUpDate && p.lastTopUpDate !== '尚未儲值' && p.lastTopUpDate.includes('T')) {
+          const d = new Date(p.lastTopUpDate);
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          formattedDate = `${yyyy}/${mm}/${dd}`;
+      }
+      document.getElementById('vcLastTopUpDate').innerText = formattedDate;
+      
+      document.getElementById('vcLastTopUpAmount').innerText = `$${p.lastTopUpAmount}`;
+
+      // 綁定推薦人數
+      document.getElementById('basicRefDisplay').innerText = p.basicRef || 0;
+      document.getElementById('advRefDisplay').innerText = p.advRef || 0;
+      
+      // 產生專屬 GitHub Pages 購買連結 (對齊 growthx-coach 儲存庫)
+      const userCode = (p.email || currentUser.email).split('@')[0];
+      document.getElementById('linkBasic').value = `https://alwayslucky2hand-ops.github.io/growthx-coach/buy.html?plan=basic&ref=${userCode}`;
+      document.getElementById('linkAdv').value = `https://alwayslucky2hand-ops.github.io/growthx-coach/buy.html?plan=advanced&ref=${userCode}`;
+
+      const vcLogBody = document.getElementById('vcLogTableBody');
+      if (data.vcLogs && data.vcLogs.length > 0) {
+        vcLogBody.innerHTML = data.vcLogs.map(log => `<tr><td class="text-muted" style="font-family: monospace;">${log.date}</td><td><span class="badge ${log.type.includes('儲值') || log.type.includes('推薦') ? 'bg-success' : 'bg-primary'}">${log.type}</span></td><td>$${log.amount}</td><td class="fw-bold ${parseInt(log.change) > 0 ? 'text-success' : 'text-danger'}">${log.change}</td><td class="fw-bold">${log.balance} 點</td><td>${log.note ? `<a href="${log.note}" target="_blank" class="btn-outline" style="padding:4px 8px; font-size:12px;"><i data-lucide="image" style="width:12px;"></i> 簽名憑證</a>` : '-'}</td></tr>`).join('');
+      } else { vcLogBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted p-4">目前尚無紀錄</td></tr>'; }
+
+      const appsHtml = (data.webApps || []).map(app => `<div class="app-card"><h6 class="fw-bold m-0">${app.name}</h6><p class="text-muted small m-0">${app.desc}</p><a href="${app.url}" target="_blank" class="btn-outline mt-2"><i data-lucide="external-link" style="width:14px;"></i> 開啟應用</a></div>`).join('');
+      document.getElementById('webAppsContainer').innerHTML = appsHtml || '<div class="text-muted small text-center p-4">尚未登錄任何數位資產。</div>';
+      
+      globalFeedData = data.posts || [];
+      renderFeed(globalFeedData, 1); 
+      
+      globalSchoolFeedData = data.schoolFeed || [];
+      filterSchoolFeed(); 
+
+      forumData = data.forumPosts || [];
+      renderForumTypeFilter();
+      renderForumPosts();
+      
+      lucide.createIcons();
+    } catch(e) { showToast("目前資料庫尚無紀錄或載入異常。", "warning"); }
+  }
+
+  function saveProfile() {
+    const nameVal = document.getElementById('inputName').value.trim(); const apiKeyVal = document.getElementById('inputApiKey').value.trim();
+    if(!apiKeyVal) { showToast("專屬 API KEY 為必填項目！", "warning"); return; }
+    document.getElementById('btnSaveProfile').disabled = true; document.getElementById('btnSaveProfile').innerText = "儲存中...";
+
+    api({ action: "updateProfile", email: currentUser.email, profileData: { name: nameVal, apiKey: apiKeyVal } }).then(msg => {
+      showToast(msg, "success");
+      document.getElementById('profileNameDisplay').innerText = nameVal || '未填寫姓名';
+      document.getElementById('userInitial').innerText = (nameVal ? nameVal.charAt(0) : 'U').toUpperCase();
+      currentUser.name = nameVal; localStorage.setItem('gx_saas_user', JSON.stringify(currentUser));
+    }).catch(err => { showToast(err.message, "error"); }).finally(() => {
+      document.getElementById('btnSaveProfile').disabled = false; document.getElementById('btnSaveProfile').innerText = "儲存設定"; lucide.createIcons();
+    });
+  }
+
+  // ================= 共用專業錄影與雙軌切片引擎 =================
+  let currentStream = null, mediaRecorder = null, isRecording = false, chunkInterval, chunkIndex = 1, postData = {};
+  let desktopSource = "camera", mobileFacingMode = "user", isVideoEnabled = false, isPaused = false;
+  let activeProcessingTasks = new Set();
+  
+  let hideControlsTimeout;
+  function handleVideoInteraction() {
+    const controls = document.getElementById('playerControls');
+    if (!controls) return;
+    controls.style.opacity = '1';
+    clearTimeout(hideControlsTimeout);
+    if (window.innerWidth <= 768) {
+      hideControlsTimeout = setTimeout(() => {
+        if (document.getElementById('recordUI').style.display !== 'none' && currentStream) {
+           controls.style.opacity = '0';
+        }
+      }, 3000);
+    }
+  }
+  
+  async function acquireStream() {
+    if (currentStream) currentStream.getTracks().forEach(track => track.stop());
+    const audioConstraints = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+    try {
+      let vidConstraints = { width: { ideal: 426 }, height: { ideal: 240 } };
+      let screenVidConstraints = { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 5 } };
+
+      if (desktopSource === "screen") {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: screenVidConstraints, audio: true });
+        let micStream = null;
+        try { micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints }); } catch(e) { log("未獲取麥克風"); }
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        mixedAudioDestination = audioContext.createMediaStreamDestination();
+        if (screenStream.getAudioTracks().length > 0) { const screenSource = audioContext.createMediaStreamSource(screenStream); screenSource.connect(mixedAudioDestination); }
+        if (micStream && micStream.getAudioTracks().length > 0) { const micSource = audioContext.createMediaStreamSource(micStream); micSource.connect(mixedAudioDestination); }
+        currentStream = new MediaStream([ screenStream.getVideoTracks()[0], mixedAudioDestination.stream.getAudioTracks()[0] ]);
+      } else {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const facing = isMobile ? mobileFacingMode : "user";
+        vidConstraints.facingMode = facing;
+        currentStream = await navigator.mediaDevices.getUserMedia({ video: vidConstraints, audio: audioConstraints });
+      }
+      
+      document.getElementById('mediaPlayer').srcObject = currentStream;
+      const videoTrack = currentStream.getVideoTracks()[0];
+      if (videoTrack) videoTrack.enabled = isVideoEnabled;
+      
+      handleVideoInteraction(); 
+    } catch(err) { showToast("硬體授權失敗", "error"); }
+  }
+
+  function cancelStream() {
+    isRecording = false; isPaused = false; clearTimeout(chunkInterval);
+    if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+    if(currentStream) currentStream.getTracks().forEach(t => t.stop());
+    if(audioContext) audioContext.close();
+    
+    document.getElementById('recordUI').style.display = 'none';
+    document.getElementById('triggerRecordBox').style.display = 'block';
+    document.getElementById('recBadge').style.display = 'none';
+    document.getElementById('btnStartPost').style.display = 'flex';
+    document.getElementById('btnStartPost').disabled = false;
+    
+    document.getElementById('btnStop').style.display = 'none';
+    document.getElementById('btnPause').style.display = 'none';
+    document.getElementById('btnCancelStream').style.display = 'flex';
+    
+    currentReplyParentId = ""; 
+    showToast("已取消硬體錄影", "success");
+  }
+
+  function triggerRecord(parentId) {
+    currentReplyParentId = parentId;
+    toggleRecordUI('reply');
+    document.getElementById('recordUI').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast("請點擊『啟動系統錄製』開始追加影音紀錄！", "success");
+  }
+
+  async function toggleRecordUI(context) {
+    currentRecordContext = context; 
+    if(context !== 'reply') { currentReplyParentId = ""; } 
+    
+    const ui = document.getElementById('recordUI'); ui.style.display = 'block';
+    document.getElementById('triggerRecordBox').style.display = 'none';
+    document.getElementById('tab-coach').insertBefore(ui, document.getElementById('tab-coach').children[1]);
+    document.getElementById('btnStartPost').innerHTML = '<i data-lucide="play-circle" style="width:18px;"></i> 啟動系統錄製';
+    document.getElementById('btnStartPost').style.display = 'flex';
+    
+    document.getElementById('btnCancelStream').style.display = 'flex';
+    document.getElementById('btnStop').style.display = 'none';
+    document.getElementById('btnPause').style.display = 'none';
+    
+    document.getElementById('videoContainer').style.display = 'block';
+    await acquireStream(); lucide.createIcons();
+  }
+
+  async function startPost() {
+    const btn = document.getElementById('btnStartPost'); btn.disabled = true;
+    const logBox = document.getElementById('systemLog'); logBox.style.display = 'block'; logBox.innerHTML = '';
+    
+    sessionUrls = []; sessionTranscripts = [];
+    
+    log("正在對齊試算表總帳碼頭...");
+    try {
+      postData = await api({ action: "initPost", email: currentUser.email, role: currentUser.role, parentId: currentReplyParentId || "" });
+      isRecording = true; chunkIndex = 1;
+      document.getElementById('recBadge').style.display = 'flex';
+      
+      document.getElementById('btnCancelStream').style.display = 'none';
+      document.getElementById('btnStop').style.display = 'flex';
+      document.getElementById('btnPause').style.display = 'flex';
+      btn.style.display = 'none';
+      
+      log("雙軌音訊混音引擎封裝成功，開始錄製。");
+      startChunkRecording();
+    } catch(e) { showToast("引擎初始化失敗", "error"); btn.disabled = false; }
+  }
+
+  function startChunkRecording() {
+    if (!isRecording || !currentStream || isPaused) return;
+    let chunks = []; 
+    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+    const options = {mimeType: mime};
+    mediaRecorder = new MediaRecorder(currentStream, options);
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    mediaRecorder.onstop = () => { if (chunks.length > 0) processChunk(new Blob(chunks, {type: mime}), mime, chunkIndex++); if (isRecording && !isPaused) startChunkRecording(); };
+    mediaRecorder.start(); chunkInterval = setTimeout(() => { if (mediaRecorder.state === "recording") mediaRecorder.stop(); }, 60000);
+  }
+
+  function processChunk(blob, mime, cIndex) {
+    log(`區段 ${cIndex} 音畫封裝寫入雲端中...`);
+    const task = new Promise(resolve => {
+      const reader = new FileReader(); reader.readAsDataURL(blob);
+      reader.onloadend = async () => {
+        const b64 = reader.result.split(',')[1];
+        try {
+          const url = await api({ action: "saveDrive", base64Data: b64, mimeType: mime, folderId: postData.folderId, rowIndex: postData.rowIndex, chunkIndex: cIndex, sheetName: 'Posts' });
+          sessionUrls.push(url);
+          const transcript = await api({ action: "recognizeAI", base64Data: b64, mimeType: mime, folderId: postData.folderId, rowIndex: postData.rowIndex, chunkIndex: cIndex, email: currentUser.email, role: currentUser.role, isReply: postData.isReply });
+          sessionTranscripts.push({ index: cIndex, text: transcript });
+          log(`區段 ${cIndex} 辨讀歸檔完成。`);
+        } catch(e) { log(`區段 ${cIndex} 寫入失敗`); }
+        resolve();
+      };
+    });
+    activeProcessingTasks.add(task); task.then(() => activeProcessingTasks.delete(task));
+  }
+
+  async function stopMeeting() {
+    isRecording = false; isPaused = false; clearTimeout(chunkInterval);
+    if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+    document.getElementById('recBadge').style.display = 'none'; document.getElementById('playerControls').style.display = 'none';
+    if(currentStream) currentStream.getTracks().forEach(t => t.stop()); if(audioContext) audioContext.close();
+    
+    log("整合背景任務，執行魔術師大腦封裝...");
+    while(activeProcessingTasks.size > 0) { await Promise.all(Array.from(activeProcessingTasks)); }
+    log("資料封裝完成，即刻樂觀顯示於日誌面板...");
+    
+    try {
+      sessionTranscripts.sort((a, b) => a.index - b.index);
+      const fullTranscript = sessionTranscripts.map(t => t.text).join('\n');
+      const fullUrls = sessionUrls.join(',');
+      const timestamp = new Date().toLocaleString('zh-TW', {hour12:false});
+
+      // 樂觀更新陪跑日誌
+      if (postData.isReply || currentReplyParentId) {
+          const parentId = currentReplyParentId || postData.parentId;
+          const parentPost = globalFeedData.find(p => p.PostID === parentId);
+          if (parentPost) {
+              if (currentUser.role === '教練') {
+                  parentPost.Coach_Reply = (parentPost.Coach_Reply ? parentPost.Coach_Reply + "\n\n" : "") + "【影音回覆】\n" + fullTranscript;
+                  parentPost.Status = "已解決";
+              } else {
+                  parentPost.Transcript = (parentPost.Transcript ? parentPost.Transcript + "\n\n" : "") + "【追加追問】\n" + fullTranscript;
+                  parentPost.Status = "呼叫教練";
+              }
+              parentPost.VideoURLs = (parentPost.VideoURLs ? parentPost.VideoURLs + "," : "") + fullUrls;
+          }
+      } else {
+          const newPost = {
+              PostID: "TEMP_POST_" + Date.now(),
+              Role: currentUser.role,
+              Email: currentUser.email,
+              Status: currentUser.role === '教練' ? "完成" : "尚未解決",
+              Timestamp: timestamp,
+              Transcript: fullTranscript,
+              AI_Summary: "【系統正在進行結構分析中...】\n" + fullTranscript,
+              VideoURLs: fullUrls,
+              Coach_Reply: ""
+          };
+          globalFeedData.unshift(newPost);
+      }
+      
+      showToast(currentReplyParentId ? "影音已成功追加回覆！" : "陪跑日誌上傳成功！", "success");
+      
+      currentReplyParentId = ""; 
+      document.getElementById('recordUI').style.display = 'none';
+      document.getElementById('triggerRecordBox').style.display = 'block';
+      document.getElementById('playerControls').style.display = 'flex'; 
+      
+      renderFeed(globalFeedData, 1);
+      
+      api({ action: "finalizePost", rowIndex: postData.rowIndex, email: currentUser.email, role: currentUser.role, isReply: postData.isReply, urls: sessionUrls, transcripts: sessionTranscripts }).catch(e => console.error(e));
+    } catch(e) { showToast("封裝結算異常", "error"); }
+  }
+
+  async function switchSourceAction() { const wasRecording = isRecording; if (wasRecording && mediaRecorder && mediaRecorder.state === "recording") { mediaRecorder.stop(); clearTimeout(chunkInterval); } const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); if (isMobile) mobileFacingMode = (mobileFacingMode === "user") ? "environment" : "user"; else desktopSource = (desktopSource === "camera") ? "screen" : "camera"; await acquireStream(); if (wasRecording && !isPaused) startChunkRecording(); }
+  function toggleVideo() { isVideoEnabled = !isVideoEnabled; if(currentStream) currentStream.getVideoTracks()[0].enabled = isVideoEnabled; }
+  function pauseMeeting() { isPaused = true; if (mediaRecorder && mediaRecorder.state === "recording") { mediaRecorder.stop(); clearTimeout(chunkInterval); log("日誌錄製已暫停。正在處理已錄製區段..."); } }
+  function resumeMeeting() { isPaused = false; startChunkRecording(); log("日誌錄製已恢復"); }
+  function log(msg) { const logBox = document.getElementById('systemLog'); logBox.innerHTML += `${msg}<br>`; logBox.scrollTop = logBox.scrollHeight; }
+
+  // ================= 陪跑日誌列表 =================
+  function renderFeed(posts, page = 1) {
+    globalFeedData = posts || [];
+    currentFeedPage = page;
+    const container = document.getElementById('feedContainer');
+    if (globalFeedData.length === 0) { container.innerHTML = '<div class="text-muted text-center p-5">尚無陪跑數據。</div>'; return; }
+    
+    const startIndex = (currentFeedPage - 1) * feedPerPage;
+    const endIndex = startIndex + feedPerPage;
+    const pagePosts = globalFeedData.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(globalFeedData.length / feedPerPage);
+    
+    container.innerHTML = pagePosts.map(post => {
+      let actionBtns = '';
+      if (currentUser.role === '學員' && post.Role === '學員' && post.Status !== '已解決') {
+        actionBtns = `
+          <div class="form-group-stack mt-4 pt-4" style="border-top: 1px solid var(--border);">
+            <button class="btn-brand" onclick="updateStatus('${post.PostID}', '已解決')"><i data-lucide="check-circle" style="width:16px;"></i> 標記為已解決</button>
+            <button class="btn-outline" style="color:#ff9500; border-color:#ff9500;" onclick="updateStatus('${post.PostID}', '尚未解決')"><i data-lucide="x-circle" style="width:16px;"></i> 尚未解決</button>
+            <button class="btn-outline" style="color:#ff3b30; border-color:#ff3b30;" onclick="updateStatus('${post.PostID}', '呼叫教練')"><i data-lucide="bell-ring" style="width:16px;"></i> 呼叫真人教練協助</button>
+          </div>`;
+      }
+      
+      let videoUrlsHtml = '';
+      if (post.VideoURLs) { 
+        videoUrlsHtml = `<div class="form-group-stack mt-4">` + 
+          post.VideoURLs.split(',').filter(u=>u.trim()).map((url, i) => `<a href="${url.trim()}" target="_blank" class="btn-outline"><i data-lucide="video" style="width:16px;"></i> 雲端切片檔案 ${i+1}</a>`).join('') + 
+          `</div>`; 
+      }
+      
+      let prettyTranscript = (post.Transcript || '無紀錄')
+        .replace(/第 (\d+) 分鐘：/g, '\n\n<h5 class="fw-bold mt-4 mb-3" style="color:var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 6px; display: inline-block;">原始發問影音 - 第 $1 分鐘</h5>\n')
+        .replace(/\[畫面描述\]/g, '\n<span class="badge bg-primary me-2 mb-2" style="font-size: 13px; padding: 6px 10px; letter-spacing: 1px;">畫面描述</span>\n')
+        .replace(/\[語音逐字稿\]/g, '\n<span class="badge bg-success me-2 mt-4 mb-2" style="font-size: 13px; padding: 6px 10px; letter-spacing: 1px;">語音逐字稿</span>\n')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--primary);">$1</strong>');
+      
+      let coachReplyHtml = '';
+      const coachReplyContent = post.Coach_Reply || post.CoachReply || '';
+      
+      if (coachReplyContent) {
+        let coachEditBtns = '';
+        if (currentUser.role === '教練') {
+            coachEditBtns = `
+            <div class="d-flex gap-2 mt-3 pt-3 border-top">
+                <button class="btn-outline p-2 w-auto" style="font-size: 13px; background: white;" onclick="openEditCoachReplyModal('${post.PostID}', \`${coachReplyContent.replace(/`/g, "'").replace(/\n/g, "\\n")}\`)"><i data-lucide="edit-2" style="width:14px;"></i> 編輯回覆總帳</button>
+                <button class="btn-outline p-2 w-auto text-danger" style="font-size: 13px; border-color: #ff3b30; background: white;" onclick="deleteCoachReply('${post.PostID}')"><i data-lucide="trash-2" style="width:14px;"></i> 清空回覆總帳</button>
+            </div>`;
+        }
+        coachReplyHtml = `
+        <div class="mt-4 p-4 rounded" style="background: rgba(0, 102, 204, 0.04); border-left: 4px solid var(--accent);">
+            <h5 class="fw-bold mb-3" style="color: var(--accent);"><i data-lucide="user-check" style="width:20px; margin-right:4px;"></i> 教練指導與回覆總帳</h5>
+            <div class="vocus-style" style="font-size: 15px;">${marked.parse(coachReplyContent)}</div>
+            ${coachEditBtns}
+        </div>`;
+      } 
+      
+      if (currentUser.role === '教練') {
+        coachReplyHtml += `
+        <div class="mt-4 pt-4 border-top">
+            <h6 class="fw-bold mb-3 text-accent"><i data-lucide="corner-down-right" style="width:16px;"></i> 新增教練回覆</h6>
+            <textarea id="coach_reply_input_${post.PostID}" class="form-control mb-3" rows="3" placeholder="輸入文字指導建議 (支援 Markdown 排版)..."></textarea>
+            <div class="d-flex gap-2">
+                <button class="btn-brand flex-grow-1" onclick="submitCoachReply('${post.PostID}')"><i data-lucide="send" style="width:16px;"></i> 送出文字回覆</button>
+                <button class="btn-brand flex-grow-1" style="background: var(--accent); border: none;" onclick="triggerRecord('${post.PostID}')"><i data-lucide="video" style="width:18px;"></i> 錄製影音指導</button>
+            </div>
+        </div>`;
+      }
+
+      let studentActionBtn = '';
+      if (currentUser.role === '學員' && post.Email === currentUser.email && post.Status !== '已解決') {
+          studentActionBtn = `
+          <div class="mt-4 pt-4 border-top">
+              <button class="btn-brand w-100 shadow-sm" style="background: #ff9500; border: none;" onclick="triggerRecord('${post.PostID}')"><i data-lucide="video" style="width:18px; margin-right:6px;"></i> 🙋‍♂️ 教練我還有問題 (錄製影音追問)</button>
+          </div>`;
+      }
+
+      let postAdminBtns = '';
+      if (currentUser.role === '教練' || currentUser.email === post.Email) {
+        postAdminBtns = `
+        <div class="d-flex flex-wrap gap-2 mt-4 pt-3 border-top" style="border-top: 1px dashed var(--border) !important;">
+            <div class="w-100 mb-1 small fw-bold text-muted"><i data-lucide="settings" style="width:14px;"></i> 日誌全域管理</div>
+            <button class="btn-outline p-2 w-auto" style="font-size: 13px; background: white;" onclick="openEditPostBaseModal('${post.PostID}')"><i data-lucide="edit"></i> 編輯整篇日誌</button>
+            <button class="btn-outline p-2 w-auto text-danger" style="font-size: 13px; border-color: #ff3b30; background: white;" onclick="executeDeletePostBase('${post.PostID}')"><i data-lucide="trash-2"></i> 刪除整篇日誌</button>
+        </div>`;
+      }
+
+      let statusBadgeClass = post.Status === '呼叫教練' ? 'bg-danger pulse-badge' : 'bg-dark';
+
+      return `
+      <div class="post-card">
+        <details class="post-toggle-details">
+          <summary class="post-header-summary">
+            <div class="d-flex justify-content-between align-items-center w-100">
+              <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <strong style="font-size: 16px; color: var(--primary);">${post.Role || '系統'}</strong>
+                  <span class="badge ${statusBadgeClass}">${post.Status || '完成'}</span>
+                </div>
+                <span class="small text-muted font-monospace">${post.Timestamp || ''}</span>
+              </div>
+              <i data-lucide="chevron-down" class="expand-icon" style="width:24px; color:var(--text-muted);"></i>
+            </div>
+          </summary>
+          <div class="post-body-content mt-4 pt-4" style="border-top: 1px solid var(--border);">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0" style="color: var(--primary);"><i data-lucide="file-text" style="width:20px; margin-right:4px;"></i> 核心問題與追問總結</h5>
+                <button class="copy-btn" onclick="copyContent('summary_${post.PostID}', this)"><i data-lucide="copy" style="width:14px;"></i> 複製摘要</button>
+              </div>
+              <div id="summary_${post.PostID}" class="summary-box vocus-style mb-4">${marked.parse(post.AI_Summary || '')}</div>
+            </div>
+            
+            ${post.AI_Reply ? `<div class="ai-reply-box mb-4"><h5 class="fw-bold mb-3" style="color: var(--primary);"><i data-lucide="cpu" style="width:20px; margin-right:4px;"></i> AI 總監指導視角</h5><div class="vocus-style p-4 rounded" style="background: var(--bg); border-left: 4px solid var(--primary);">${marked.parse(post.AI_Reply)}</div></div>` : ''}
+            
+            ${coachReplyHtml}
+
+            <details class="transcript-details mt-4 border-top pt-4">
+              <summary class="transcript-summary"><i data-lucide="align-left" style="width:18px; margin-right:8px;"></i> 查看原始發問的完整逐字稿與影音檔案</summary>
+              <div class="details-content mt-3 p-0" style="background: transparent;">
+                <div class="d-flex justify-content-end mb-2"><button class="copy-btn" onclick="copyContent('transcript_${post.PostID}', this)"><i data-lucide="copy" style="width:14px;"></i> 複製全紀錄</button></div>
+                <div id="transcript_${post.PostID}" class="transcript-box mb-3">${prettyTranscript}</div>
+                ${videoUrlsHtml}
+              </div>
+            </details>
+            ${actionBtns}
+            ${studentActionBtn}
+            ${postAdminBtns}
+          </div>
+        </details>
+      </div>`;
+    }).join('');
+    if (totalPages > 1) { container.innerHTML += `<div class="pagination-container"><button class="page-btn" ${currentFeedPage === 1 ? 'disabled' : ''} onclick="changeFeedPage(${currentFeedPage - 1})"><i data-lucide="chevron-left" style="width:16px;"></i></button><span class="fw-bold text-muted mx-2" style="font-size:14px;">第 ${currentFeedPage} / ${totalPages} 頁</span><button class="page-btn" ${currentFeedPage === totalPages ? 'disabled' : ''} onclick="changeFeedPage(${currentFeedPage + 1})"><i data-lucide="chevron-right" style="width:16px;"></i></button></div>`; }
+    lucide.createIcons();
+  }
+
+  function changeFeedPage(newPage) { renderFeed(globalFeedData, newPage); document.getElementById('tab-coach').scrollIntoView({ behavior: 'smooth' }); }
+
+  function updateStatus(postId, status) {
+    showUIConfirm("更新日誌狀態", `確定標記為「${status}」嗎？`, "確定更新", "var(--primary)", () => {
+      const post = globalFeedData.find(p => p.PostID === postId);
+      if(post) post.Status = status;
+      renderFeed(globalFeedData, currentFeedPage);
+      showToast("狀態已更新", "success");
+      api({ action: "updateStatus", postId: postId, status: status }).catch(e => showToast("狀態更新失敗", "error"));
+    });
+  }
+
+  function openEditPostBaseModal(postId) {
+    const post = globalFeedData.find(p => p.PostID === postId);
+    if(!post) return;
+    document.getElementById('editPostBaseId').value = postId;
+    document.getElementById('editPostBaseSummary').value = post.AI_Summary || '';
+    document.getElementById('editPostBaseTranscript').value = post.Transcript || '';
+    document.getElementById('editPostBaseModal').classList.add('active');
+  }
+
+  function saveEditPostBase() {
+    const postId = document.getElementById('editPostBaseId').value;
+    const newSummary = document.getElementById('editPostBaseSummary').value.trim();
+    const newTranscript = document.getElementById('editPostBaseTranscript').value.trim();
+    
+    const post = globalFeedData.find(p => p.PostID === postId);
+    if (post) { post.AI_Summary = newSummary; post.Transcript = newTranscript; }
+    closeModals(); renderFeed(globalFeedData, currentFeedPage); showToast("日誌更新成功", "success");
+    
+    api({action: "editPostBase", postId: postId, newSummary: newSummary, newTranscript: newTranscript}).catch(e => showToast("更新失敗，請重新整理", "error"));
+  }
+
+  function executeDeletePostBase(postId) {
+    showUIConfirm("徹底刪除陪跑日誌", "確定要徹底刪除這筆日誌紀錄嗎？\n此動作將刪除包含影片紀錄在內的所有相關發問與回覆，刪除後無法還原。", "確定刪除", "#ff3b30", () => {
+      const index = globalFeedData.findIndex(p => p.PostID === postId);
+      if (index !== -1) globalFeedData.splice(index, 1);
+      renderFeed(globalFeedData, currentFeedPage); showToast("日誌已刪除", "success");
+      api({action: "deletePostBase", postId: postId}).catch(e => showToast("刪除失敗", "error"));
+    });
+  }
+
+  function submitCoachReply(postId) {
+    const content = document.getElementById(`coach_reply_input_${postId}`).value.trim();
+    if(!content) return showToast("回覆內容不可為空", "warning");
+    
+    const post = globalFeedData.find(p => p.PostID === postId);
+    if (post) {
+      post.Coach_Reply = post.Coach_Reply ? post.Coach_Reply + "\n\n" + content : content;
+      post.Status = "已解決";
+    }
+    document.getElementById(`coach_reply_input_${postId}`).value = '';
+    renderFeed(globalFeedData, currentFeedPage);
+    showToast("回覆已成功追加寫入", "success");
+
+    api({action: "submitCoachReply", postId: postId, replyContent: content}).catch(e => showToast(e.message, "error"));
+  }
+
+  function openEditCoachReplyModal(postId, content) {
+    document.getElementById('editCoachReplyPostId').value = postId;
+    document.getElementById('editCoachReplyArea').value = content;
+    document.getElementById('editCoachReplyModal').classList.add('active');
+  }
+
+  function saveEditCoachReply() {
+    const postId = document.getElementById('editCoachReplyPostId').value;
+    const content = document.getElementById('editCoachReplyArea').value.trim();
+    if(!content) return showToast("內容不可為空", "warning");
+    
+    const post = globalFeedData.find(p => p.PostID === postId);
+    if (post) post.Coach_Reply = content;
+    closeModals(); renderFeed(globalFeedData, currentFeedPage); showToast("歷史回覆總帳已成功覆寫更新", "success");
+
+    api({action: "editCoachReply", postId: postId, newContent: content}).catch(e => showToast("更新失敗", "error"));
+  }
+
+  function deleteCoachReply(postId) {
+    showUIConfirm("清空教練回覆", "確定要徹底清空教練回覆大總帳嗎？\n此動作將刪除該儲存格內的所有歷史回覆與影音紀錄，無法復原。", "確認清空", "#ff3b30", () => {
+      const post = globalFeedData.find(p => p.PostID === postId);
+      if (post) { post.Coach_Reply = ""; post.Status = "尚未解決"; }
+      renderFeed(globalFeedData, currentFeedPage); showToast("教練回覆已清空", "success");
+      api({action: "deleteCoachReply", postId: postId}).catch(e => showToast("清空失敗", "error"));
+    });
+  }
+
+  // ================= FFS 學堂 =================
+  function extractYTVideoId(url) {
+    const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|live|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+    const match = url.match(regExp); return (match && match[1].length === 11) ? match[1] : null;
+  }
+  
+  function extractTitle(content) {
+    if(!content) return '無標題教材';
+    const firstLine = content.split('\n')[0].replace(/[#*`]/g, '').trim();
+    return firstLine.length > 20 ? firstLine.substring(0, 20) + '...' : (firstLine || '無標題教材');
+  }
+
+  function filterSchoolFeed() {
+    const kw = document.getElementById('schoolSearchKeyword').value.toLowerCase().trim();
+    const sd = document.getElementById('schoolStartDate').value;
+    const ed = document.getElementById('schoolEndDate').value;
+    const sortOrder = document.getElementById('schoolSortOrder').value; 
+    
+    let filteredPosts = globalSchoolFeedData.filter(item => {
+      if(item.Type !== 'POST') return true; 
+      let matchKw = true; if(kw) { matchKw = (item.Content && item.Content.toLowerCase().includes(kw)); }
+      let matchSd = true, matchEd = true;
+      if(item.Timestamp) {
+        let postDate = new Date(item.Timestamp.split(' ')[0].replace(/\//g, '-'));
+        if(sd) matchSd = postDate >= new Date(sd); if(ed) matchEd = postDate <= new Date(ed);
+      }
+      return matchKw && matchSd && matchEd;
+    });
+    
+    filteredPosts.sort((a, b) => {
+      const timeA = new Date(a.Timestamp).getTime(); const timeB = new Date(b.Timestamp).getTime();
+      if (sortOrder === 'oldest') return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
+      else return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+    });
+    renderSchoolFeed(filteredPosts, 1);
+  }
+
+  function publishSchoolPost() {
+    const text = document.getElementById('schoolPostContent').value.trim(); const ytUrl = document.getElementById('schoolYtUrl').value.trim();
+    if(!text || !ytUrl) return showToast("請輸入教材描述並貼上 YouTube 網址", "warning");
+    
+    const btn = document.getElementById('btnPublishSchool'); btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="spin" style="width:16px;"></i> 發布中...'; lucide.createIcons();
+    const newPost = { PostID: "TEMP_" + Date.now(), ParentID: "", Email: currentUser.email, AuthorCode: currentUser.email.split('@')[0], Timestamp: new Date().toLocaleString('zh-TW', {hour12:false}), VideoURLs: "", Content: text, Recommendations: "", Viewers: currentUser.email, TotalViews: 1, Type: "POST", Status: "已發布", YouTubeURL: ytUrl };
+    
+    globalSchoolFeedData.unshift(newPost); filterSchoolFeed(); 
+    document.getElementById('schoolPostContent').value = ''; document.getElementById('schoolYtUrl').value = ''; showToast("發布成功！", "success");
+    
+    api({ action: "publishSchoolPostYT", email: currentUser.email, content: text, ytUrl: ytUrl })
+      .catch(e => { showToast(e.message, "error"); globalSchoolFeedData.shift(); filterSchoolFeed(); })
+      .finally(() => { btn.disabled = false; btn.innerHTML = '<i data-lucide="send" style="width:16px;"></i> 確定發布'; lucide.createIcons(); });
+  }
+
+  function renderSchoolFeed(items, page = 1) {
+    for (const key in ytPlayers) { if (ytPlayers[key] && typeof ytPlayers[key].destroy === 'function') ytPlayers[key].destroy(); delete ytPlayers[key]; }
+    for (const key in ytTimers) { clearInterval(ytTimers[key]); delete ytTimers[key]; }
+
+    currentSchoolPage = page;
+    const container = document.getElementById('schoolFeedContainer');
+    const posts = items.filter(i => i.Type === "POST"); const comments = items.filter(i => i.Type === "COMMENT");
+    
+    if (posts.length === 0) { container.innerHTML = '<div class="text-muted text-center p-5">學堂牆上目前空空如也，或無符合搜尋條件的教材。</div>'; return; }
+    
+    const startIndex = (currentSchoolPage - 1) * schoolPerPage;
+    const endIndex = startIndex + schoolPerPage;
+    const pagePosts = posts.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(posts.length / schoolPerPage);
+
+    posts.forEach(post => {
+      let viewers = post.Viewers ? post.Viewers.split(',').filter(v=>v.trim()) : [];
+      if(!viewers.includes(currentUser.email)) {
+        viewers.push(currentUser.email); post.Viewers = viewers.join(','); post.TotalViews = (parseInt(post.TotalViews) || 0) + 1;
+        if(!post.PostID.startsWith("TEMP_")) api({ action: "recordView", email: currentUser.email, postId: post.PostID }).catch(()=>{});
+      }
+    });
+    
+    container.innerHTML = pagePosts.map(post => {
+      const myComments = comments.filter(c => c.ParentID === post.PostID);
+      const commentsHtml = myComments.map(c => `<div class="p-3 bg-light rounded mb-2 small"><div class="d-flex justify-content-between fw-bold mb-1"><span>代碼：${c.AuthorCode}</span><span class="text-muted">${c.Timestamp}</span></div><div class="text-secondary">${c.Content}</div></div>`).join('');
+      
+      let mediaHtml = ''; let videoId = '';
+      if (post.YouTubeURL && post.YouTubeURL.trim() !== '') {
+        videoId = extractYTVideoId(post.YouTubeURL);
+        if (videoId) {
+          mediaHtml = `
+            <div id="ytwrapper_${post.PostID}" class="custom-yt-wrapper mb-2 mt-3 mx-3">
+              <div id="ytplayer_${post.PostID}" style="position:absolute; top:0; left:0; width:100%; height:100%;"></div>
+              <div class="yt-shield" onclick="toggleCustomPlayer('${post.PostID}')"></div>
+              <div class="custom-controls-bar">
+                <button onclick="toggleCustomPlayer('${post.PostID}')" class="control-btn p-1"><i data-lucide="play" id="playicon_${post.PostID}" style="width:20px; color:white;"></i></button>
+                <div class="yt-progress-container" onclick="seekCustomPlayer(event, '${post.PostID}')"><div id="progress_${post.PostID}" class="yt-progress-fill"></div></div>
+                <button onclick="fullscreenCustomPlayer('${post.PostID}')" class="control-btn p-1"><i data-lucide="maximize" style="width:20px; color:white;"></i></button>
+              </div>
+            </div>`;
+        } else mediaHtml = `<a href="${post.YouTubeURL}" target="_blank" class="btn-outline mb-4 mx-3"><i data-lucide="youtube" style="width:16px;"></i> 開啟外部連結</a>`;
+      }
+
+      let managerMenu = '';
+      if ((currentUser.role === '教練' || currentUser.email === 'alwayslucky2hand@gmail.com') && !post.PostID.startsWith("TEMP_")) {
+        managerMenu = `
+        <div class="d-flex flex-wrap gap-2 mx-3 mt-3 mb-2 p-3 rounded" style="background: rgba(255, 59, 48, 0.05); border: 1px dashed rgba(255, 59, 48, 0.2);">
+           <div class="w-100 mb-1 small fw-bold text-danger"><i data-lucide="shield-alert" style="width:14px;"></i> 教練專屬權限</div>
+           <button class="btn-outline p-2 flex-grow-1" style="font-size: 13px; background: white;" onclick="openEditModal('${post.rowIndex}', \`${(post.Content || '').replace(/`/g, "'").replace(/\n/g, "\\n")}\`)"><i data-lucide="edit-2" style="width:14px;"></i> 編輯教材描述</button>
+           <button class="btn-outline p-2 flex-grow-1 text-danger" style="font-size: 13px; border-color: #ff3b30; background: white;" onclick="executeDelete('${post.rowIndex}')"><i data-lucide="trash-2" style="width:14px;"></i> 刪除此堂課程</button>
+        </div>`;
+      }
+
+      let recs = post.Recommendations ? post.Recommendations.split(',').filter(e=>e.trim()) : [];
+      let isRecommended = recs.includes(currentUser.email);
+      let recCount = recs.length; let totalViews = parseInt(post.TotalViews) || 1;
+
+      return `
+      <div class="school-details">
+        <div class="d-flex flex-column flex-md-row gap-2 gap-md-4 align-items-md-center w-100 p-3 bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2 flex-shrink-0"><i data-lucide="calendar" style="width:16px; color:var(--text-muted);"></i><span class="small text-muted font-monospace">${post.Timestamp.split(' ')[0]}</span></div>
+          <div class="fw-bold text-primary text-truncate" style="flex:1;">${extractTitle(post.Content)}</div>
+          <div class="d-flex gap-3 gap-md-4 small text-muted flex-shrink-0">
+            <span class="d-flex align-items-center gap-1" title="瀏覽數"><i data-lucide="eye" style="width:14px;"></i> ${totalViews}</span>
+            <span class="d-flex align-items-center gap-1" title="推薦數"><i data-lucide="thumbs-up" style="width:14px;"></i> ${recCount}</span>
+            <span class="d-flex align-items-center gap-1" title="互動留言"><i data-lucide="message-square" style="width:14px;"></i> ${myComments.length}</span>
+          </div>
+        </div>
+        ${managerMenu}${mediaHtml}
+        <details class="post-toggle-details px-3 pb-3">
+          <summary class="post-header-summary">
+            <span class="fw-bold text-primary"><i data-lucide="message-square-text" style="width:18px; margin-right:6px;"></i> 查看教材描述與討論區</span>
+            <i data-lucide="chevron-down" class="expand-icon flex-shrink-0" style="width:20px; color:var(--text-muted);"></i>
+          </summary>
+          <div class="post-body-content position-relative mt-2 p-3 bg-white" style="border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; margin-top: -10px;">
+            <div class="vocus-style mt-2" style="font-size: 15px; line-height:1.8;">${marked.parse(post.Content || '')}</div>
+            <div class="d-flex align-items-center gap-4 mt-4 pt-4 border-top">
+              <button class="btn-recommend ${isRecommended ? 'active' : ''}" onclick="toggleRecommend('${post.PostID}')"><i data-lucide="thumbs-up" style="width:16px; ${isRecommended ? 'fill: currentColor;' : ''}"></i><span>推薦本文 (${recCount})</span></button>
+            </div>
+            <div class="mt-4 pt-4 border-top">
+              <h6 class="fw-bold mb-3 small text-muted"><i data-lucide="message-square" style="width:14px;"></i> 學員互動討論區 (${myComments.length})</h6>
+              ${commentsHtml}
+              <div class="d-flex gap-2 mt-3">
+                <input type="text" id="comment_input_${post.PostID}" class="form-control" style="padding:12px;" placeholder="輸入您的提問或心得...">
+                <button class="btn-brand w-auto px-4" onclick="submitSchoolComment('${post.PostID}')">送出</button>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>`;
+    }).join('');
+    
+    if (totalPages > 1) { 
+        container.innerHTML += `<div class="pagination-container"><button class="page-btn" ${currentSchoolPage === 1 ? 'disabled' : ''} onclick="changeSchoolPage(${currentSchoolPage - 1})"><i data-lucide="chevron-left" style="width:16px;"></i></button><span class="fw-bold text-muted mx-2" style="font-size:14px;">第 ${currentSchoolPage} / ${totalPages} 頁</span><button class="page-btn" ${currentSchoolPage === totalPages ? 'disabled' : ''} onclick="changeSchoolPage(${currentSchoolPage + 1})"><i data-lucide="chevron-right" style="width:16px;"></i></button></div>`; 
+    }
+    lucide.createIcons();
+    
+    pagePosts.forEach(post => {
+        if (post.YouTubeURL && post.YouTubeURL.trim() !== '') {
+            const videoId = extractYTVideoId(post.YouTubeURL);
+            if (videoId && ytApiLoaded && !ytPlayers[post.PostID]) {
+                ytPlayers[post.PostID] = new YT.Player('ytplayer_' + post.PostID, { videoId: videoId, playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'rel': 0, 'modestbranding': 1, 'fs': 0 }, events: { 'onStateChange': (event) => onPlayerStateChange(event, post.PostID) } });
+            }
+        }
+    });
+  }
+
+  function changeSchoolPage(newPage) { renderSchoolFeed(globalSchoolFeedData, newPage); document.getElementById('tab-school').scrollIntoView({ behavior: 'smooth' }); }
+  function toggleCustomPlayer(postId) { const player = ytPlayers[postId]; if(player && typeof player.getPlayerState === 'function') { const state = player.getPlayerState(); if(state === YT.PlayerState.PLAYING) { player.pauseVideo(); } else { player.playVideo(); } } }
+  function onPlayerStateChange(event, postId) { const playIcon = document.getElementById('playicon_' + postId); if(event.data === YT.PlayerState.PLAYING) { if(playIcon) { playIcon.setAttribute('data-lucide', 'pause'); lucide.createIcons(); } ytTimers[postId] = setInterval(() => updateProgressBar(postId), 200); } else { if(playIcon) { playIcon.setAttribute('data-lucide', 'play'); lucide.createIcons(); } clearInterval(ytTimers[postId]); } }
+  function updateProgressBar(postId) { const player = ytPlayers[postId]; if(player && player.getDuration) { const duration = player.getDuration(); const current = player.getCurrentTime(); if(duration > 0) { const percent = (current / duration) * 100; const bar = document.getElementById('progress_' + postId); if(bar) bar.style.width = percent + '%'; } } }
+  function seekCustomPlayer(event, postId) { const player = ytPlayers[postId]; if(player && player.getDuration) { const container = event.currentTarget; const rect = container.getBoundingClientRect(); const clickX = event.clientX - rect.left; const percent = clickX / rect.width; player.seekTo(percent * player.getDuration(), true); } }
+  function fullscreenCustomPlayer(postId) { const wrapper = document.getElementById('ytwrapper_' + postId); if (wrapper.requestFullscreen) { wrapper.requestFullscreen(); } else if (wrapper.webkitRequestFullscreen) { wrapper.webkitRequestFullscreen(); } }
+
+  function toggleRecommend(postId) {
+    if(postId.startsWith("TEMP_")) return showToast("發布處理中，請稍後再試", "warning");
+    const post = globalSchoolFeedData.find(p => p.PostID === postId);
+    if(!post) return;
+    
+    let recs = post.Recommendations ? post.Recommendations.split(',').filter(e=>e.trim()) : [];
+    const idx = recs.indexOf(currentUser.email);
+    if(idx > -1) { recs.splice(idx, 1); } else { recs.push(currentUser.email); }
+    post.Recommendations = recs.join(',');
+    
+    filterSchoolFeed(); 
+    api({ action: "toggleRecommend", email: currentUser.email, postId: postId }).catch(e => console.error(e));
+  }
+
+  function submitSchoolComment(postId) {
+    if(postId.startsWith("TEMP_")) return showToast("發布處理中，請稍後再試", "warning");
+    const input = document.getElementById(`comment_input_${postId}`); const text = input.value.trim();
+    if (!text) return showToast("內容不可為空", "warning");
+
+    const newComment = { PostID: "TEMP_C_" + Date.now(), ParentID: postId, Email: currentUser.email, AuthorCode: currentUser.email.split('@')[0], Timestamp: new Date().toLocaleString('zh-TW', {hour12:false}), Content: text, Type: "COMMENT" };
+    globalSchoolFeedData.push(newComment); filterSchoolFeed(); input.value = ''; showToast("回覆成功", "success");
+    
+    api({ action: "addSchoolComment", email: currentUser.email, parentId: postId, content: text }).catch(e => showToast("寫入失敗", "error"));
+  }
+
+  function openEditModal(rowIndex, currentContent) { document.getElementById('editRowId').value = rowIndex; document.getElementById('editContentArea').value = currentContent; document.getElementById('editModal').classList.add('active'); }
+  
+  function saveEditPost() { 
+      const rowId = document.getElementById('editRowId').value; 
+      const newContent = document.getElementById('editContentArea').value; 
+      
+      const post = globalSchoolFeedData.find(p => String(p.rowIndex) === String(rowId));
+      if (post) post.Content = newContent;
+      
+      closeModals(); filterSchoolFeed(); showToast("更新成功", "success");
+      api({ action: "editSchoolPost", rowIndex: rowId, email: currentUser.email, role: currentUser.role, newContent: newContent }).catch(e => showToast("更新失敗", "error")); 
+  }
+  
+  function executeDelete(rowIndex) { 
+      showUIConfirm("刪除學堂課程", "確定要將這堂課程從系統徹底刪除嗎？\n刪除後無法還原。", "確定刪除", "#ff3b30", () => { 
+          const index = globalSchoolFeedData.findIndex(p => String(p.rowIndex) === String(rowIndex));
+          if (index !== -1) globalSchoolFeedData.splice(index, 1);
+          filterSchoolFeed(); showToast("刪除成功", "success");
+          api({ action: "deleteSchoolPost", rowIndex: rowIndex, email: currentUser.email, role: currentUser.role }).catch(e => showToast("刪除失敗", "error")); 
+      }); 
+  }
+  
+  function copyCode() { navigator.clipboard.writeText(document.getElementById('memberCodeTxt').innerText); showToast("代碼已複製", "success"); }
+
+  // ================= 🔽 完美移植：敲碗解惑論壇邏輯 =================
+  function renderForumTypeFilter() {
+    const container = document.getElementById('forum-type-container'); container.innerHTML = '';
+    ['全部', '解惑', '敲碗'].forEach(opt => {
+        const btn = document.createElement('button'); 
+        btn.className = opt === currentForumType ? 'btn-brand w-auto px-3 py-1' : 'btn-outline w-auto px-3 py-1 text-muted';
+        btn.style.fontSize = '14px'; btn.innerText = opt; 
+        btn.onclick = () => { currentForumType = opt; currentForumPage = 1; renderForumTypeFilter(); renderForumPosts(); };
+        container.appendChild(btn);
+    });
+  }
+
+  function filterForumPosts() {
+    currentForumSearch = document.getElementById('forumSearchKeyword').value.toLowerCase().trim();
+    currentForumDate = document.getElementById('forumDatePicker').value;
+    currentForumPage = 1;
+    renderForumPosts();
+  }
+  
+  function clearForumDate() {
+    document.getElementById('forumDatePicker').value = '';
+    currentForumDate = '';
+    filterForumPosts();
+  }
+
+  function formatForumComment(str) {
+    const match = str.match(/^(\[\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}\]【.*?】)(.*)/s);
+    if (match) {
+        const header = escapeHtml(match[1]); const body = linkify(escapeAndBr(match[2].replace(/^\s+/, '')));
+        return `<div class="fw-bold mb-1" style="color:var(--accent); font-size:13px;">${header}</div><div class="text-dark">${body}</div>`;
+    } else { return `<div class="text-dark">${linkify(escapeAndBr(str))}</div>`; }
+  }
+
+  function escapeHtml(t) { return t.replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function escapeAndBr(t) { return escapeHtml(t).replace(/\n/g, '<br>'); }
+  function linkify(t) { return t.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" class="text-primary text-decoration-underline">$1</a>'); }
+
+  function getForumCommentsHtml(post) {
+    if (!post.comments || post.comments.length === 0) return '<p class="text-muted small mb-0">目前還沒有人留言，搶先發表看法吧！</p>';
+    
+    let visibleHtml = ''; let hiddenHtml = ''; let hiddenCount = 0;
+    const showLimit = 5;
+    const hiddenLimit = Math.max(0, post.comments.length - showLimit);
+
+    post.comments.forEach((c, index) => {
+        let repliesHtml = '';
+        if (c.replies && c.replies.length > 0) {
+            c.replies.forEach(r => repliesHtml += `<div class="ms-3 mt-2 ps-3 border-start">${formatForumComment(r)}</div>`);
+        }
+        
+        const replyActionHtml = c.isOptimistic ? `` : `<button class="btn-outline px-2 py-1 text-muted" style="font-size:12px; width:auto; border-color:transparent; background:var(--bg);" onclick="document.getElementById('forum-reply-form-${post.postID}-${c.colIndex}').style.display='block'">回覆此樓</button>`;
+
+        const itemHtml = `
+            <div class="comment-box mb-3">
+                <div>${formatForumComment(c.main)}</div>
+                <div class="d-flex gap-2 mt-2">
+                    ${c.replies && c.replies.length > 0 ? `<button class="btn-outline px-2 py-1 text-muted" style="font-size:12px; width:auto; border-color:transparent; background:var(--bg);" onclick="const el=document.getElementById('forum-replies-${post.postID}-${c.colIndex}'); el.style.display=el.style.display==='none'?'block':'none'">展開回覆 (${c.replies.length})</button>` : ''}
+                    ${replyActionHtml}
+                </div>
+                <div id="forum-replies-${post.postID}-${c.colIndex}" class="mt-2" style="display:${c.showReplies ? 'block' : 'none'};">${repliesHtml}</div>
+                <div id="forum-reply-form-${post.postID}-${c.colIndex}" style="display:none;" class="mt-2">
+                    <textarea id="forum_content_${post.postID}_${c.colIndex}" class="form-control mb-2" rows="2" placeholder="回覆內容..."></textarea>
+                    <button class="btn-brand py-2 px-3 w-auto" style="font-size:13px;" onclick="submitForumInteraction('${post.postID}', 'reply', ${c.colIndex}, this)">送出回覆</button>
+                </div>
+            </div>`;
+
+        if (index < hiddenLimit) { hiddenHtml += itemHtml; hiddenCount += (1 + (c.replies ? c.replies.length : 0));
+        } else { visibleHtml += itemHtml; }
+    });
+
+    let finalHtml = '';
+    if (hiddenHtml !== '') {
+        finalHtml += `
+            <button class="btn-outline w-100 mb-3" id="btn-load-more-${post.postID}" onclick="document.getElementById('hidden-comments-${post.postID}').style.display='block'; this.style.display='none';">
+                載入較舊的留言 (隱藏 ${hiddenCount} 則紀錄)
+            </button>
+            <div id="hidden-comments-${post.postID}" style="display:none;">${hiddenHtml}</div>
+        `;
+    }
+    finalHtml += visibleHtml;
+    return finalHtml;
+  }
+
+  function renderForumPosts() {
+    const container = document.getElementById('forumPostsContainer');
+    if (!forumData) forumData = [];
+    
+    let filtered = forumData;
+    if (currentForumSearch) filtered = filtered.filter(p => (p.nickname && p.nickname.toLowerCase().includes(currentForumSearch)) || (p.content && p.content.toLowerCase().includes(currentForumSearch)) || (p.postType && p.postType.toLowerCase().includes(currentForumSearch)));
+    if (currentForumType !== '全部') filtered = filtered.filter(p => p.postType === currentForumType);
+    if (currentForumDate) filtered = filtered.filter(p => p.timestamp && p.timestamp.includes(currentForumDate.replace(/-/g, '/')));
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center p-5">目前沒有相關討論或文章。</div>'; return;
+    }
+
+    const totalPages = Math.ceil(filtered.length / forumPerPage);
+    const postsToShow = filtered.slice((currentForumPage - 1) * forumPerPage, currentForumPage * forumPerPage);
+
+    container.innerHTML = postsToShow.map(post => {
+        let p1Count = post.plusOnes ? post.plusOnes.length : 0;
+        let totalCommentCount = post.comments ? post.comments.reduce((sum, c) => sum + 1 + (c.replies ? c.replies.length : 0), 0) : 0;
+        
+        const hasP1 = post.plusOnes && post.plusOnes.includes(currentUser.email);
+        const p1BtnClass = hasP1 ? "btn-brand w-100" : "btn-outline w-100";
+        const p1BtnText = hasP1 ? `已 +1 (${p1Count})` : `同問 +1 (${p1Count})`;
+
+        let interactionHTML = `
+            <div class="d-flex flex-wrap flex-md-nowrap gap-2 mt-4 pt-4 border-top">
+                <button class="${p1BtnClass}" id="btn-p1-${post.postID}" onclick="submitForumInteraction('${post.postID}', 'plusOne', null, this)"><i data-lucide="thumbs-up" style="width:16px; margin-right:4px;"></i> ${p1BtnText}</button>
+                <button class="btn-outline w-100" id="btn-comment-toggle-${post.postID}" onclick="const el = document.getElementById('forum-comments-${post.postID}'); el.style.display = el.style.display==='none'?'block':'none';"><i data-lucide="message-square" style="width:16px; margin-right:4px;"></i> 留言討論 (${totalCommentCount})</button>
+            </div>
+            <div id="forum-comments-${post.postID}" class="mt-4 p-3 bg-light rounded" style="display:none; border: 1px solid var(--border);">
+                <div id="forum-comments-list-${post.postID}">
+                    ${getForumCommentsHtml(post)}
+                </div>
+                <div class="mt-4 pt-3 border-top">
+                    <h6 class="fw-bold mb-2" style="color:var(--slate-blue); font-size:14px;">新增主留言</h6>
+                    <textarea id="forum_content_${post.postID}_main" class="form-control mb-2" rows="2" placeholder="寫下您的看法..."></textarea>
+                    <button class="btn-brand w-auto px-4 py-2" style="font-size:14px;" onclick="submitForumInteraction('${post.postID}', 'main', null, this)">送出留言</button>
+                </div>
+            </div>`;
+
+        return `
+            <div class="post-card">
+                <div class="post-header border-0 pb-0">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold fs-5 text-dark">${escapeHtml(post.nickname)}</span>
+                        <span class="small text-muted font-monospace">${post.timestamp}</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap mb-3">
+                        <span class="badge ${post.postType === '敲碗' ? 'bg-primary' : 'bg-success'}">${post.postType}</span>
+                        ${post.jobTitle && post.jobTitle !== '不透露' ? `<span class="badge bg-dark">${escapeHtml(post.jobTitle)}</span>` : ''}
+                        ${post.location && post.location !== '不透露' ? `<span class="badge bg-secondary">${escapeHtml(post.location)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="post-body-content mt-2 vocus-style" style="font-size:15px; color:var(--text-dark);">
+                    ${linkify(escapeAndBr(post.content))}
+                </div>
+                ${interactionHTML}
+            </div>
+        `;
+    }).join('');
+
+    if (totalPages > 1) {
+        let pageBtns = '';
+        for (let i = 1; i <= totalPages; i++) {
+            pageBtns += `<button class="page-btn ${i === currentForumPage ? 'bg-primary text-white border-primary' : ''}" onclick="currentForumPage=${i}; renderForumPosts(); document.getElementById('tab-forum').scrollIntoView({behavior:'smooth'});">${i}</button>`;
+        }
+        container.innerHTML += `<div class="pagination-container">${pageBtns}</div>`;
+    }
+    lucide.createIcons();
+  }
+
+  // 🌟 論壇互動 (留言、+1) 的樂觀更新
+  function submitForumInteraction(postID, type, colIndex, btn) {
+    let post = forumData.find(p => p.postID === postID);
+    if (!post) return;
+
+    if (type === 'plusOne') {
+        let p1Arr = post.plusOnes || [];
+        let hasP1 = p1Arr.includes(currentUser.email);
+        
+        if (hasP1) post.plusOnes = p1Arr.filter(e => e !== currentUser.email);
+        else post.plusOnes.push(currentUser.email);
+        
+        const p1Count = post.plusOnes.length;
+        btn.className = !hasP1 ? "btn-brand w-100" : "btn-outline w-100";
+        btn.innerHTML = `<i data-lucide="thumbs-up" style="width:16px; margin-right:4px;"></i> ${!hasP1 ? `已 +1 (${p1Count})` : `同問 +1 (${p1Count})`}`;
+        lucide.createIcons();
+        
+        api({ action: 'addForumPlusOne', postID: postID, email: currentUser.email }).catch(e => console.error(e));
+        return; 
+    }
+
+    let content = document.getElementById(`forum_content_${postID}_${colIndex || 'main'}`).value.trim();
+    if (!content) return showToast("請輸入內容", "warning");
+
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const newFormattedText = `[${timeStr}]【${currentUser.email}】${content}`;
+
+    if (type === 'main') {
+        if (!post.comments) post.comments = [];
+        post.comments.push({ colIndex: 'temp', main: newFormattedText, replies: [], isOptimistic: true });
+        document.getElementById(`forum_content_${postID}_main`).value = '';
+    } else {
+        const target = post.comments.find(c => c.colIndex === colIndex);
+        if (target) {
+            if (!target.replies) target.replies = [];
+            target.replies.push(newFormattedText);
+            target.showReplies = true; 
+        }
+    }
+
+    document.getElementById(`forum-comments-list-${postID}`).innerHTML = getForumCommentsHtml(post);
+    const toggleBtn = document.getElementById(`btn-comment-toggle-${postID}`);
+    let newTotalCount = post.comments.reduce((sum, c) => sum + 1 + (c.replies ? c.replies.length : 0), 0);
+    if (toggleBtn) toggleBtn.innerHTML = `<i data-lucide="message-square" style="width:16px; margin-right:4px;"></i> 留言討論 (${newTotalCount})`;
+    lucide.createIcons();
+
+    if (type !== 'main') {
+        const form = document.getElementById(`forum-reply-form-${postID}-${colIndex}`);
+        if(form) form.style.display = 'none';
+    }
+
+    api({ action: 'addForumComment', postID: postID, email: currentUser.email, content: content, colIndex: colIndex === 'temp' ? null : colIndex }).catch(e => showToast("留言同步至伺服器失敗，但在重新整理前依然可見", "error"));
+  }
+
+  // 🌟 論壇發文的樂觀更新
+  function submitForumPost() {
+    const nickname = document.getElementById('f_nickname').value.trim();
+    const content = document.getElementById('f_content').value.trim();
+    if (!nickname || !content) return showToast("暱稱與討論內容為必填！", "warning");
+    
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const newPost = {
+        postID: "F_TEMP_" + Date.now(), timestamp: timeStr, postType: document.getElementById('f_postType').value,
+        email: currentUser.email, nickname: nickname, gender: document.getElementById('f_gender').value,
+        jobTitle: document.getElementById('f_job').value || '不透露', age: document.getElementById('f_age').value,
+        location: document.getElementById('f_location').value || '不透露', content: content,
+        plusOnes: [], comments: []
+    };
+    
+    forumData.unshift(newPost);
+    filterForumPosts(); 
+
+    document.getElementById('f_content').value = ''; 
+    document.getElementById('newForumPostWrapper').style.display = 'none';
+    showToast("發佈成功！", "success");
+
+    api({ 
+        action: 'addForumPost', postType: newPost.postType, email: newPost.email, nickname: newPost.nickname, 
+        gender: newPost.gender, jobTitle: newPost.jobTitle, age: newPost.age, location: newPost.location, content: newPost.content 
+    }).catch(e => console.error("伺服器同步失敗", e));
+  }
+
+  document.addEventListener('click', function(e) {
+      const isInsideCommentArea = e.target.closest('.bg-light');
+      const isToggleButton = e.target.closest('button');
+      const isInput = e.target.closest('textarea') || e.target.closest('input');
+
+      if (!isInsideCommentArea && !isToggleButton && !isInput) {
+          document.querySelectorAll('[id^="hidden-comments-"]').forEach(el => el.style.display = 'none');
+          document.querySelectorAll('[id^="btn-load-more-"]').forEach(btn => btn.style.display = 'block');
+          document.querySelectorAll('[id^="forum-reply-form-"]').forEach(el => el.style.display = 'none');
+      }
+  });
+
+</script>
+</body>
+</html>
