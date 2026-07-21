@@ -885,6 +885,7 @@
       
       cancelEditCanvas();
       
+      // ✅ 將歷史紀錄精確傳入進行 UI 還原
       renderEditQuoteList(globalContractData, record.services || "");
       document.getElementById('edit-history-modal').classList.add('show');
       
@@ -893,96 +894,163 @@
 
     function closeEditHistoryModal() { document.getElementById('edit-history-modal').classList.remove('show'); }
 
+    // ==========================================
+    // 💡 核心優化：完全還原「客戶建檔報價」的歷史狀態，並容許追加新項目
+    // ==========================================
     function renderEditQuoteList(items, selectedServicesStr) { 
-      var listDiv = document.getElementById('edit-service-list'); listDiv.innerHTML = ""; 
+      var listDiv = document.getElementById('edit-service-list'); 
+      listDiv.innerHTML = ""; 
       var validStr = selectedServicesStr || ""; 
-      var sortedTypes = Object.keys(items).sort(function(a, b){ var idxA=typeOrder.indexOf(a); var idxB=typeOrder.indexOf(b); return (idxA===-1?999:idxA) - (idxB===-1?999:idxB); }); 
-      
-      var servicePrices = {};
-      var checkedChildren = [];
+
+      // 1. 深度解析歷史紀錄字串 (還原所有自訂金額、自訂月份、客製化勾選項)
+      var historyParsed = [];
+      var currentObj = null;
       var lines = validStr.split('\n');
 
-      lines.forEach(function(line){
+      lines.forEach(function(line) {
         var trimmedLine = line.trim();
         if (trimmedLine.startsWith('- ')) {
-          var parts = trimmedLine.substring(2).split(' | $');
-          if (parts.length > 0) {
-            var sName = parts[0].trim();
-            var months = 1;
-            
-            var monthMatch = sName.match(/(.+?)\s*\(x(\d+)個月\)$/);
-            if(monthMatch) {
-                sName = monthMatch[1].trim(); 
-                months = parseInt(monthMatch[2], 10);
-            }
+          if (currentObj) historyParsed.push(currentObj);
 
-            if (parts.length > 1) {
-              var numericString = parts[1].replace(/[^0-9]/g, ''); 
-              var parsedTotalPrice = parseInt(numericString, 10);
-              var parsedPrice = isNaN(parsedTotalPrice) ? 0 : (months > 1 ? Math.round(parsedTotalPrice / months) : parsedTotalPrice);
-              servicePrices[sName] = { price: parsedPrice, months: months };
-            } else {
-              servicePrices[sName] = { price: 0, months: months };
-            }
+          var parts = trimmedLine.substring(2).split(' | $');
+          var rawName = parts[0].trim();
+          var totalPriceStr = parts[1] ? parts[1].replace(/[^0-9.-]/g, '') : "0";
+          var totalPrice = parseInt(totalPriceStr, 10) || 0;
+
+          var sName = rawName;
+          var months = 1;
+          var isSub = false;
+
+          // 偵測是否為訂閱制或多月度設定
+          var monthMatch = rawName.match(/(.+?)\s*\(x(\d+)個月\)$/);
+          if (monthMatch) {
+            sName = monthMatch[1].trim();
+            months = parseInt(monthMatch[2], 10);
+            isSub = true;
+          } else if (rawName.includes('/月')) {
+            isSub = true; // 從名稱推斷為月費訂閱制
           }
-        } else if (trimmedLine !== '') {
-          checkedChildren.push(trimmedLine);
+
+          var basePrice = months > 1 ? Math.round(totalPrice / months) : totalPrice;
+
+          currentObj = {
+            originalName: sName,
+            price: basePrice,
+            months: months,
+            isSub: isSub,
+            children: []
+          };
+        } else if (trimmedLine !== '' && currentObj) {
+          var childText = trimmedLine;
+          // 去除前綴標籤如 [服務名稱]
+          if (childText.startsWith('[')) {
+            var cParts = childText.split('] ');
+            if (cParts.length > 1) childText = cParts.slice(1).join('] ');
+          }
+          currentObj.children.push(childText);
         }
       });
+      if (currentObj) historyParsed.push(currentObj);
 
-      sortedTypes.forEach(function(type) {
-        listDiv.insertAdjacentHTML('beforeend', '<div class="category-title">' + type + '</div>');
-        var sortedServices = Object.keys(items[type]).sort(function(a, b){ return a.localeCompare(b, 'zh-TW'); });
-        
-        sortedServices.forEach(function(service) {
-          var sData = items[type][service]; 
-          var group = document.createElement('details'); group.className = "accordion-group"; 
-          var isSub = (type === '訂閱服務');
-          
-          var isParentChecked = servicePrices.hasOwnProperty(service); 
-          var childHtmlParts = [];
-          
-          sData.details.forEach(function(detail) { 
-            var childVal = '[' + service + '] ' + detail;
-            var isChildChecked = checkedChildren.includes(detail.trim());
-            if (isChildChecked) isParentChecked = true; 
-            
-            var checkedAttr = isChildChecked ? 'checked' : '';
-            childHtmlParts.push('<label class="tree-child"><input type="checkbox" class="edit-child-box" onchange="calcEditTotal(); autoSaveEdit();" value="' + childVal + '" ' + checkedAttr + '><span style="color:var(--text-main); font-weight:400;">' + detail + '</span></label>'); 
-          }); 
-          
-          var parentCheckAttr = isParentChecked ? 'checked' : '';
-          var currentPrice = servicePrices[service] ? servicePrices[service].price : sData.price;
-          var currentMonths = servicePrices[service] ? servicePrices[service].months : (sData.defaultMonths || 1);
+      var renderedServices = []; // 用來避免上下重複渲染
+
+      // 2. 優先產生「歷史報價還原」區塊 (百分百重現上次報價儲存時的樣貌)
+      if (historyParsed.length > 0) {
+        listDiv.insertAdjacentHTML('beforeend', '<div class="category-title">前次建檔內容 (還原歷史紀錄)</div>');
+        historyParsed.forEach(function(histItem) {
+          renderedServices.push(histItem.originalName);
+
+          var group = document.createElement('details');
+          group.className = "accordion-group";
+          group.setAttribute('open', true); // 歷史項目預設展開
 
           var htmlParts = [];
           htmlParts.push('<summary class="accordion-header"><div class="summary-left">');
-          htmlParts.push('<input type="checkbox" class="edit-parent-box" onchange="toggleEditQuoteChildren(this)" onclick="event.stopPropagation()" data-type="' + type + '" data-service="' + service + '" data-price="' + sData.price + '" value="' + service + '" ' + parentCheckAttr + '>');
+          htmlParts.push('<input type="checkbox" class="edit-parent-box" onchange="toggleEditQuoteChildren(this)" onclick="event.stopPropagation()" data-type="歷史紀錄" data-issub="' + histItem.isSub + '" data-service="' + histItem.originalName + '" data-price="' + histItem.price + '" value="' + histItem.originalName + '" checked>');
+          htmlParts.push('<span>' + histItem.originalName + '</span></div><div class="summary-right"></div></summary>');
+          htmlParts.push('<div class="details-content">');
+
+          htmlParts.push('<div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-color); display:flex; align-items:center; flex-wrap:wrap; gap:10px;">');
+          htmlParts.push('<label style="margin:0; flex-shrink:0; font-weight:600; color:var(--text-main);">' + (histItem.isSub || histItem.months > 1 ? '每月報價：' : '項目報價：') + '</label>');
+          htmlParts.push('<div style="position:relative; display:inline-block; max-width:150px;">');
+          htmlParts.push('<span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:15px; font-weight:500;">$</span>');
+          htmlParts.push('<input type="number" class="edit-service-price-input" data-service="' + histItem.originalName + '" value="' + histItem.price + '" style="width:100%; padding-left:26px; margin:0; font-weight:600;" oninput="calcEditTotal(); autoSaveEdit();">');
+          htmlParts.push('</div>');
+
+          if (histItem.isSub || histItem.months > 1) {
+            htmlParts.push('<label style="margin:0; flex-shrink:0; font-weight:600; color:var(--text-main);">x</label>');
+            htmlParts.push('<input type="number" class="edit-service-months-input" value="' + histItem.months + '" style="width:80px; margin:0; font-weight:600; text-align:center;" oninput="calcEditTotal(); autoSaveEdit();">');
+            htmlParts.push('<label style="margin:0; flex-shrink:0; font-weight:600; color:var(--text-main);">個月</label>');
+          }
+          htmlParts.push('</div>');
+
+          histItem.children.forEach(function(childText) {
+            var childVal = '[' + histItem.originalName + '] ' + childText;
+            htmlParts.push('<label class="tree-child"><input type="checkbox" class="edit-child-box" onchange="calcEditTotal(); autoSaveEdit();" value="' + childVal + '" checked><span style="color:var(--text-main); font-weight:400;">' + childText + '</span></label>');
+          });
+
+          htmlParts.push('</div>');
+          group.innerHTML = htmlParts.join('');
+          listDiv.appendChild(group);
+        });
+      }
+
+      // 3. 將剩下的「簽約項目」追加在下方，提供編輯時追加新項目的彈性
+      var sortedTypes = Object.keys(items).sort(function(a, b){ var idxA=typeOrder.indexOf(a); var idxB=typeOrder.indexOf(b); return (idxA===-1?999:idxA) - (idxB===-1?999:idxB); }); 
+      
+      sortedTypes.forEach(function(type) {
+        var typeHasNewItems = false;
+        var typeHtmlParts = [];
+        typeHtmlParts.push('<div class="category-title">' + type + ' (可追加新項目)</div>');
+
+        var sortedServices = Object.keys(items[type]).sort(function(a, b){ return a.localeCompare(b, 'zh-TW'); });
+        
+        sortedServices.forEach(function(service) {
+          // 如果這項服務已經在上面歷史區塊被還原了，這裡就略過避免重複
+          if (renderedServices.includes(service)) return; 
+          typeHasNewItems = true;
+
+          var sData = items[type][service]; 
+          var isSub = (type === '訂閱服務');
+          
+          var childHtmlParts = [];
+          sData.details.forEach(function(detail) { 
+            var childVal = '[' + service + '] ' + detail;
+            childHtmlParts.push('<label class="tree-child"><input type="checkbox" class="edit-child-box" onchange="calcEditTotal(); autoSaveEdit();" value="' + childVal + '"><span style="color:var(--text-main); font-weight:400;">' + detail + '</span></label>'); 
+          }); 
+          
+          var htmlParts = [];
+          htmlParts.push('<details class="accordion-group">');
+          htmlParts.push('<summary class="accordion-header"><div class="summary-left">');
+          htmlParts.push('<input type="checkbox" class="edit-parent-box" onchange="toggleEditQuoteChildren(this)" onclick="event.stopPropagation()" data-type="' + type + '" data-service="' + service + '" data-price="' + sData.price + '" value="' + service + '">');
           htmlParts.push('<span>' + service + ' (預設 $' + Number(sData.price).toLocaleString() + (isSub?'/月':'') + ')</span></div><div class="summary-right"></div></summary>');
           htmlParts.push('<div class="details-content">');
           
           htmlParts.push('<div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-color); display:flex; align-items:center; flex-wrap:wrap; gap:10px;">');
-          htmlParts.push('<label style="margin:0; flex-shrink:0; font-weight:600; color:var(--text-main);">' + (isSub ? '每月報價：' : '獨立服務報價：') + '</label>');
+          htmlParts.push('<label style="margin:0; flex-shrink:0; font-weight:600; color:var(--text-main);">' + (isSub ? '每月報價：' : '項目報價：') + '</label>');
           htmlParts.push('<div style="position:relative; display:inline-block; max-width:150px;">');
           htmlParts.push('<span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:15px; font-weight:500;">$</span>');
-          htmlParts.push('<input type="number" class="edit-service-price-input" data-service="' + service + '" value="' + currentPrice + '" style="width:100%; padding-left:26px; margin:0; font-weight:600;" oninput="calcEditTotal(); autoSaveEdit();">');
+          htmlParts.push('<input type="number" class="edit-service-price-input" data-service="' + service + '" value="' + sData.price + '" style="width:100%; padding-left:26px; margin:0; font-weight:600;" oninput="calcEditTotal(); autoSaveEdit();">');
           htmlParts.push('</div>');
           
           if (isSub) {
             htmlParts.push('<label style="margin:0; flex-shrink:0; font-weight:600; color:var(--text-main);">x</label>');
-            htmlParts.push('<input type="number" class="edit-service-months-input" value="' + currentMonths + '" style="width:80px; margin:0; font-weight:600; text-align:center;" oninput="calcEditTotal(); autoSaveEdit();">');
+            htmlParts.push('<input type="number" class="edit-service-months-input" value="' + (sData.defaultMonths || 1) + '" style="width:80px; margin:0; font-weight:600; text-align:center;" oninput="calcEditTotal(); autoSaveEdit();">');
             htmlParts.push('<label style="margin:0; flex-shrink:0; font-weight:600; color:var(--text-main);">個月</label>');
           }
           htmlParts.push('</div>');
           
           htmlParts.push(childHtmlParts.join(''));
-          htmlParts.push('</div>');
+          htmlParts.push('</div></details>');
           
-          group.innerHTML = htmlParts.join(''); 
-          if (isParentChecked) group.setAttribute('open', true);
-          listDiv.appendChild(group); 
+          typeHtmlParts.push(htmlParts.join('')); 
         });
+        
+        if (typeHasNewItems) {
+           listDiv.insertAdjacentHTML('beforeend', typeHtmlParts.join(''));
+        }
       });
+
       calcEditTotal(); 
     }
 
@@ -1007,10 +1075,21 @@
         
         var type = box.getAttribute('data-type');
         var service = box.getAttribute('data-service');
-        if (globalContractData[type] && globalContractData[type][service]) {
-          var sTerms = globalContractData[type][service].terms; 
-          if (sTerms) combinedTerms += '【' + service + '】\n' + sTerms + '\n\n'; 
+        var sTerms = "";
+
+        // 若為歷史紀錄，需要尋找全域設定帶出原本對應的合約條款
+        if (type === "歷史紀錄") {
+          for (var t in globalContractData) {
+            if (globalContractData[t][service]) {
+               sTerms = globalContractData[t][service].terms;
+               break;
+            }
+          }
+        } else if (globalContractData[type] && globalContractData[type][service]) {
+          sTerms = globalContractData[type][service].terms; 
         }
+
+        if (sTerms) combinedTerms += '【' + service + '】\n' + sTerms + '\n\n'; 
       }); 
       
       editCurrentTax = Math.round(editCurrentSubtotal * 0.05); 
@@ -1344,7 +1423,8 @@
         var totalPrice = basePrice * months;
 
         var titleStr = box.value;
-        if (months > 1 || box.getAttribute('data-type') === '訂閱服務') {
+        // 如果是訂閱服務，或原本就是多月的歷史紀錄，就加上月份文字防跑版
+        if (months > 1 || box.getAttribute('data-type') === '訂閱服務' || box.getAttribute('data-issub') === 'true') {
              titleStr += ' (x' + months + '個月)';
         }
 
