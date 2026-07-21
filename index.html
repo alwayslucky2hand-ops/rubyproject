@@ -830,18 +830,32 @@
 
     function renderEditQuoteList(items, selectedServicesStr) { 
       var listDiv = document.getElementById('edit-service-list'); listDiv.innerHTML = ""; 
-      var validStr = selectedServicesStr || "";
-      var sortedTypes = Object.keys(items).sort(function(a, b){ var idxA=typeOrder.indexOf(a); var idxB=typeOrder.indexOf(b); return (idxA===-1?999:idxA) - (idxB===-1?999:idxB); });
+      var validStr = selectedServicesStr || ""; 
+      var sortedTypes = Object.keys(items).sort(function(a, b){ var idxA=typeOrder.indexOf(a); var idxB=typeOrder.indexOf(b); return (idxA===-1?999:idxA) - (idxB===-1?999:idxB); }); 
       
+      // 【精準解析邏輯】：避免部分字眼相符就誤判，並強健處理金額格式
       var servicePrices = {};
+      var checkedChildren = [];
       var lines = validStr.split('\n');
+
       lines.forEach(function(line){
-          if (line.startsWith('- ')) {
-              var parts = line.replace('- ', '').split(' | $');
-              if (parts.length > 1) {
-                  servicePrices[parts[0].trim()] = parseInt(parts[1].replace(/,/g, ''));
-              }
+        var trimmedLine = line.trim();
+        if (trimmedLine.startsWith('- ')) {
+          var parts = trimmedLine.substring(2).split(' | $');
+          if (parts.length > 0) {
+            var sName = parts[0].trim();
+            if (parts.length > 1) {
+              // 拔除所有非數字字元 (防禦逗號與小數點差異)，確保還原純數字
+              var numericString = parts[1].replace(/[^0-9]/g, ''); 
+              var parsedPrice = parseInt(numericString, 10);
+              servicePrices[sName] = isNaN(parsedPrice) ? 0 : parsedPrice;
+            } else {
+              servicePrices[sName] = 0;
+            }
           }
+        } else if (trimmedLine !== '') {
+          checkedChildren.push(trimmedLine);
+        }
       });
 
       sortedTypes.forEach(function(type) {
@@ -853,12 +867,13 @@
           var group = document.createElement('details'); group.className = "accordion-group"; 
           
           var childHtmlParts = [];
-          var isParentChecked = validStr.includes(service); 
+          // 【關鍵修正】：精確比對 serviceName 是否存在於解析出的物件中
+          var isParentChecked = servicePrices.hasOwnProperty(service); 
 
-          // 【細項展開】徹底鎖死規則：只顯示服務項目名稱，通通不用價位
           sData.details.forEach(function(detail) { 
             var childVal = '[' + service + '] ' + detail;
-            var isChildChecked = validStr.includes(detail.trim());
+            // 【關鍵修正】：精確比對子項目陣列
+            var isChildChecked = checkedChildren.includes(detail.trim());
             if (isChildChecked) isParentChecked = true; 
             
             var checkedAttr = isChildChecked ? 'checked' : '';
@@ -869,7 +884,6 @@
           var currentPrice = servicePrices[service] !== undefined ? servicePrices[service] : sData.price;
 
           var htmlParts = [];
-          // 【套組總報價】顯示對應的項目與價位
           htmlParts.push('<summary class="accordion-header"><div class="summary-left">');
           htmlParts.push('<input type="checkbox" class="edit-parent-box" onchange="toggleEditQuoteChildren(this)" onclick="event.stopPropagation()" data-type="' + type + '" data-service="' + service + '" data-price="' + sData.price + '" value="' + service + '" ' + parentCheckAttr + '>');
           htmlParts.push('<span>' + service + ' (預設 $' + Number(sData.price).toLocaleString() + ')</span></div><div class="summary-right"></div></summary>');
@@ -1253,7 +1267,8 @@
         var priceInput = group.querySelector('.edit-service-price-input');
         var price = priceInput ? parseInt(priceInput.value || 0) : parseInt(box.getAttribute('data-price') || 0);
 
-        selText += '- ' + box.value + ' | $' + price.toLocaleString() + '\n'; 
+        // 加入 'en-US' 統一格式
+        selText += '- ' + box.value + ' | $' + price.toLocaleString('en-US') + '\n'; 
         box.closest('details').querySelectorAll('.edit-child-box:checked').forEach(function(c){ selText += '  ' + c.value.split('] ')[1] + '\n'; }); 
       });
 
@@ -1304,7 +1319,8 @@
         var priceInput = group.querySelector('.service-price-input');
         var price = priceInput ? parseInt(priceInput.value || 0) : parseInt(box.getAttribute('data-price') || 0);
 
-        selText += '- ' + box.value + ' | $' + price.toLocaleString() + '\n'; 
+        // 加入 'en-US' 統一格式
+        selText += '- ' + box.value + ' | $' + price.toLocaleString('en-US') + '\n'; 
         box.closest('details').querySelectorAll('.child-box:checked').forEach(function(c){ selText += '  ' + c.value.split('] ')[1] + '\n'; }); 
       });
       
